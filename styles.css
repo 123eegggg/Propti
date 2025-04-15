@@ -858,24 +858,60 @@ footer {
     color: var(--primary);
 }
 
+.testimonials-wrapper {
+    position: relative;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 60px;
+    overflow: hidden;
+}
+
 .testimonials-container {
-    display: flex;
-    gap: 2rem;
-    margin: 3rem auto;
-    max-width: 1200px;
-    justify-content: center;
+    position: relative;
+    height: 380px;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1400px;
+    perspective: 1200px;
 }
 
 .testimonial-card {
-    flex: 1;
-    max-width: 500px;
+    position: absolute;
+    width: 280px;
+    min-height: 340px;
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     padding: 2.5rem;
     background-color: var(--card-bg);
     border-radius: 1.25rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(10px);
-    transition: var(--transition);
+    opacity: 0;
+    visibility: visible; /* Make all cards visible by default */
+    pointer-events: none;
+}
+
+.testimonial-card.active {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* Only hide cards that are far from center */
+.testimonial-card:not(.active) {
+    opacity: 0;
+    z-index: 0;
+}
+
+/* Visible but faded cards (neighbors of active card) */
+.testimonial-card[style*="scale(0.9)"] {
+    opacity: 0.7;
+    visibility: visible;
 }
 
 .testimonial-card:hover {
@@ -884,13 +920,14 @@ footer {
 }
 
 .testimonial-card .quote {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--text);
     margin-bottom: 2rem;
     line-height: 1.6;
     font-style: italic;
     position: relative;
     padding-left: 2rem;
+    flex-grow: 1; /* Added to allow content to expand */
 }
 
 .testimonial-card .quote::before {
@@ -918,6 +955,59 @@ footer {
 .author .title {
     color: var(--gray);
     font-size: 0.9rem;
+}
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.prev-btn {
+    left: 0;
+}
+
+.next-btn {
+    right: 0;
+}
+
+.carousel-btn i {
+    font-size: 1.2rem;
+}
+
+.carousel-dots {
+    position: relative;
+    z-index: 10;
+}
+
+.testimonial-card.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
 }
 
 @media (max-width: 768px) {
