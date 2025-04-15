@@ -304,4 +304,117 @@ document.addEventListener('DOMContentLoaded', function() {
         footerInstagram.setAttribute('target', '_blank');
         footerInstagram.setAttribute('rel', 'noopener noreferrer');
     }
+
+    // Testimonial Carousel
+    const container = document.querySelector('.testimonials-container');
+    const cards = container.querySelectorAll('.testimonial-card');
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+    const dotsContainer = document.querySelector('.carousel-dots');
+    
+    let currentIndex = 0;
+    const totalCards = cards.length;
+    const cardWidth = 280; // Fixed card width
+    const gap = 32; // 2rem gap
+    const visibleCards = 5;
+    const halfVisible = Math.floor(visibleCards / 2);
+    
+    // Create dots
+    for (let i = 0; i < totalCards; i++) {
+        const dot = document.createElement('span');
+        dot.classList.add('dot');
+        if (i === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+    }
+
+    // Initial position setup
+    positionCards();
+
+    function positionCards() {
+        cards.forEach((card, index) => {
+            let position = index - currentIndex;
+            
+            // Handle circular wrapping
+            if (position < -halfVisible) position += totalCards;
+            if (position > halfVisible) position -= totalCards;
+            
+            // Calculate x position
+            const x = position * (cardWidth + gap);
+            const scale = Math.abs(position) > halfVisible ? 0.8 : 1 - (Math.abs(position) * 0.1);
+            const opacity = Math.abs(position) > halfVisible ? 0 : 1 - (Math.abs(position) * 0.15);
+            
+            card.style.transform = `translateX(${x}px) scale(${scale})`;
+            card.style.opacity = opacity;
+            card.style.left = `${(container.offsetWidth - cardWidth) / 2}px`; // Center the card
+        });
+
+        // Update dots
+        const dots = dotsContainer.querySelectorAll('.dot');
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentIndex);
+        });
+    }
+
+    function goToSlide(index) {
+        currentIndex = index;
+        positionCards();
+    }
+
+    function slideNext() {
+        currentIndex = (currentIndex + 1) % totalCards;
+        positionCards();
+    }
+
+    function slidePrev() {
+        currentIndex = (currentIndex - 1 + totalCards) % totalCards;
+        positionCards();
+    }
+
+    // Event listeners
+    nextBtn.addEventListener('click', slideNext);
+    prevBtn.addEventListener('click', slidePrev);
+
+    // Auto-slide every 5 seconds
+    let autoSlideInterval = setInterval(slideNext, 5000);
+
+    // Pause auto-slide on hover
+    container.addEventListener('mouseenter', () => {
+        clearInterval(autoSlideInterval);
+    });
+
+    container.addEventListener('mouseleave', () => {
+        autoSlideInterval = setInterval(slideNext, 5000);
+    });
+
+    // Touch support
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    container.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        clearInterval(autoSlideInterval);
+    }, false);
+
+    container.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+        autoSlideInterval = setInterval(slideNext, 5000);
+    }, false);
+
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        const difference = touchStartX - touchEndX;
+        
+        if (Math.abs(difference) > swipeThreshold) {
+            if (difference > 0) {
+                slideNext();
+            } else {
+                slidePrev();
+            }
+        }
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', positionCards);
 });
