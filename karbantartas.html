@@ -84,9 +84,9 @@
                     <input type="text" id="title" required>
                 </div>
                 <div class="form-group">
-                    <label for="location">Helyszín</label>
-                    <select id="location" required>
-                        <option value="">Ingatlanok betöltése...</option>
+                    <label for="propertyId">Ingatlan</label>
+                    <select id="propertyId" required>
+                        <option value="">Válassz ingatlant...</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -146,9 +146,9 @@
                     <input type="text" id="editTitle" required>
                 </div>
                 <div class="form-group">
-                    <label for="editLocation">Helyszín</label>
-                    <select id="editLocation" required>
-                        <option value="">Ingatlanok betöltése...</option>
+                    <label for="editPropertyId">Ingatlan</label>
+                    <select id="editPropertyId" required>
+                        <option value="">Válassz ingatlant...</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -219,8 +219,6 @@
 
         function createTaskCard(task) {
             const div = document.createElement('div');
-            div.className = `maintenance-card ${task.priority === 'urgent' ? 'urgent' : ''}`;
-            
             const statusText = {
                 'in_progress': 'Folyamatban',
                 'completed': 'Befejezett'
@@ -231,36 +229,36 @@
                 'completed': 'completed'
             };
 
-            const paymentInfo = task.paymentId ? `
-                <div class="task-payment">
-                    <i class="fas fa-money-bill"></i>
-                    <span>Kifizetés csatolva</span>
-                </div>
-            ` : '';
-
+            div.className = `maintenance-card ${task.priority === 'urgent' ? 'urgent' : ''} ${statusClass[task.status] || ''}`;
             div.innerHTML = `
                 <div class="maintenance-header">
                     <span class="priority-badge">${task.priority === 'urgent' ? 'Sürgős' : 'Normál'}</span>
-                    <span class="status ${statusClass[task.status]}">${statusText[task.status]}</span>
-                    <button class="btn-edit" onclick="editTask('${task.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
+                    <span class="status">${statusText[task.status] || task.status}</span>
                 </div>
                 <h3>${task.title}</h3>
-                <p class="location"><i class="fas fa-map-marker-alt"></i> ${task.location}</p>
+                <p class="property"><i class="fas fa-building"></i> ${task.propertyName}</p>
                 <p class="description">${task.description}</p>
-                ${task.images && task.images.length > 0 ? `
+                ${task.images.length > 0 ? `
                     <div class="task-images">
                         ${task.images.map(url => `
-                            <img src="${url}" alt="Task image" onclick="window.open('${url}', '_blank')">
+                            <img src="${url}" alt="Maintenance image" onclick="window.open('${url}', '_blank')">
                         `).join('')}
                     </div>
                 ` : ''}
-                ${paymentInfo}
+                ${task.paymentId ? `
+                    <div class="task-payment">
+                        <i class="fas fa-money-bill"></i>
+                        <span>Kifizetés csatolva</span>
+                    </div>
+                ` : ''}
                 <div class="task-meta">
                     <span><i class="fas fa-calendar"></i> ${new Date(task.createdAt).toLocaleDateString('hu-HU')}</span>
                 </div>
             `;
+
+            // Add edit handler
+            div.addEventListener('click', () => editTask(task.id));
+            
             return div;
         }
 
@@ -275,13 +273,16 @@
 
                 const taskData = taskSnapshot.data();
                 
+                // Load properties before populating form
+                await loadProperties();
+                
                 // Load payments before populating form
                 await loadMaintenancePayments(currentUser.uid, 'editPayment');
                 
                 // Populate edit form
                 document.getElementById('editTaskId').value = taskId;
                 document.getElementById('editTitle').value = taskData.title;
-                document.getElementById('editLocation').value = taskData.location;
+                document.getElementById('editPropertyId').value = taskData.propertyId || '';
                 document.getElementById('editPriority').value = taskData.priority;
                 document.getElementById('editStatus').value = taskData.status;
                 document.getElementById('editDescription').value = taskData.description;
@@ -322,6 +323,41 @@
             }
         }
 
+        // Add loadProperties function
+        async function loadProperties() {
+            try {
+                const propertiesRef = collection(db, 'properties');
+                const q = query(propertiesRef, where('ownerId', '==', currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                
+                const propertySelect = document.getElementById('propertyId');
+                propertySelect.innerHTML = '<option value="">Válassz ingatlant...</option>';
+                
+                querySnapshot.forEach((doc) => {
+                    const property = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = property.location;
+                    propertySelect.appendChild(option);
+                });
+
+                // Populate editPropertyId dropdown
+                const editPropertySelect = document.getElementById('editPropertyId');
+                editPropertySelect.innerHTML = '<option value="">Válassz ingatlant...</option>';
+                
+                querySnapshot.forEach((doc) => {
+                    const property = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = property.location;
+                    editPropertySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading properties:', error);
+                alert('Hiba történt az ingatlanok betöltésekor');
+            }
+        }
+
         // Add event listeners for edit modal
         document.addEventListener('DOMContentLoaded', () => {
             // Edit form submission
@@ -330,10 +366,24 @@
                 const taskId = document.getElementById('editTaskId').value;
 
                 try {
+                    const propertyId = document.getElementById('editPropertyId').value;
+                    if (!propertyId) {
+                        throw new Error('Kérjük válasszon egy ingatlant!');
+                    }
+
+                    // Get property details
+                    const propertyRef = doc(db, 'properties', propertyId);
+                    const propertySnap = await getDoc(propertyRef);
+                    if (!propertySnap.exists()) {
+                        throw new Error('A kiválasztott ingatlan nem található!');
+                    }
+                    const propertyData = propertySnap.data();
+
                     const taskRef = doc(db, 'maintenance', taskId);
                     await updateDoc(taskRef, {
                         title: document.getElementById('editTitle').value,
-                        location: document.getElementById('editLocation').value,
+                        propertyId: propertyId,
+                        propertyName: propertyData.location,
                         priority: document.getElementById('editPriority').value,
                         status: document.getElementById('editStatus').value,
                         description: document.getElementById('editDescription').value,
@@ -344,9 +394,10 @@
                     document.getElementById('editModal').classList.remove('active');
                     document.body.style.overflow = 'auto';
                     await loadMaintenanceTasks();
+                    alert('Feladat sikeresen frissítve!');
                 } catch (error) {
                     console.error('Error updating task:', error);
-                    alert('Hiba történt a mentés során');
+                    alert('Hiba történt a mentés során: ' + error.message);
                 }
             });
 
@@ -410,11 +461,9 @@
                 Array.from(cards).forEach(card => {
                     const title = card.querySelector('h3').textContent.toLowerCase();
                     const description = card.querySelector('.description').textContent.toLowerCase();
-                    const location = card.querySelector('.location').textContent.toLowerCase();
 
                     if (title.includes(searchTerm) || 
-                        description.includes(searchTerm) || 
-                        location.includes(searchTerm)) {
+                        description.includes(searchTerm)) {
                         card.style.display = '';
                     } else {
                         card.style.display = 'none';
@@ -451,10 +500,12 @@
             const imageInput = document.getElementById('images');
             const imagePreviewContainer = document.getElementById('imagePreviewContainer');
 
+            // Update openModal function to load properties
             function openModal() {
                 modalBackdrop.classList.add('active');
                 document.body.style.overflow = 'hidden';
                 maintenanceForm.reset();
+                loadProperties(); // Load properties when opening modal
             }
 
             function closeModal() {
@@ -477,7 +528,7 @@
                 e.stopPropagation();
             });
 
-            // Form submission with loading state
+            // Update form submission
             maintenanceForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const submitBtn = maintenanceForm.querySelector('button[type="submit"]');
@@ -485,9 +536,23 @@
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
                 try {
+                    const propertyId = document.getElementById('propertyId').value;
+                    if (!propertyId) {
+                        throw new Error('Kérjük válasszon egy ingatlant!');
+                    }
+
+                    // Get property details
+                    const propertyRef = doc(db, 'properties', propertyId);
+                    const propertySnap = await getDoc(propertyRef);
+                    if (!propertySnap.exists()) {
+                        throw new Error('A kiválasztott ingatlan nem található!');
+                    }
+                    const propertyData = propertySnap.data();
+
                     const formData = {
                         title: document.getElementById('title').value,
-                        location: document.getElementById('location').value,
+                        propertyId: propertyId,
+                        propertyName: propertyData.location,
                         priority: document.getElementById('priority').value,
                         status: document.getElementById('status').value,
                         description: document.getElementById('description').value,
@@ -496,12 +561,29 @@
                         ownerId: currentUser.uid,
                         images: []
                     };
-                    // ...rest of submission code...
+
+                    // Handle file uploads
+                    const files = document.getElementById('images').files;
+                    if (files.length > 0) {
+                        const imageUrls = await Promise.all(
+                            Array.from(files).map(async (file) => {
+                                const storageRef = ref(storage, `storage/${currentUser.uid}/maintenance/${Date.now()}-${file.name}`);
+                                const snapshot = await uploadBytes(storageRef, file);
+                                return await getDownloadURL(snapshot.ref);
+                            })
+                        );
+                        formData.images = imageUrls;
+                    }
+
+                    // Save to Firestore
+                    await addDoc(collection(db, 'maintenance'), formData);
                     closeModal();
                     await loadMaintenanceTasks();
+                    alert('Feladat sikeresen hozzáadva!');
+
                 } catch (error) {
                     console.error('Error:', error);
-                    alert('Hiba történt a mentés során');
+                    alert('Hiba történt a mentés során: ' + error.message);
                 } finally {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = 'Mentés';

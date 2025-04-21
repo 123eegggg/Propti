@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             await Promise.all([
                 loadMaintenanceTasks(),
-                loadProperties('location'), // Load properties immediately
                 loadMaintenancePayments(user.uid)
             ]);
         } else {
@@ -65,51 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const maintenanceForm = document.getElementById('maintenance-form');
     const editForm = document.getElementById('edit-form');
 
-    // Update the loadProperties function
-    async function loadProperties(selectElementId = 'location') {
-        try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) return;
-
-            // Get properties collection reference
-            const propertiesRef = collection(db, 'properties');
-            const q = query(propertiesRef, where('ownerId', '==', currentUser.uid));
-            const querySnapshot = await getDocs(q);
-
-            // Get the select element
-            const locationSelect = document.getElementById(selectElementId);
-            locationSelect.innerHTML = '<option value="">Válassz ingatlant...</option>';
-
-            if (querySnapshot.empty) {
-                locationSelect.innerHTML = '<option value="">Nincsenek ingatlanok</option>';
-                locationSelect.disabled = true;
-                return;
-            }
-
-            // Add each property to the dropdown
-            querySnapshot.forEach((doc) => {
-                const property = { id: doc.id, ...doc.data() };
-                const option = document.createElement('option');
-                option.value = doc.id; // Use the document ID as the value
-                option.textContent = `${property.location}${property.isRented ? ` (Kiadva - ${property.tenant || 'Névtelen bérlő'})` : ' (Üres)'}`;
-                locationSelect.appendChild(option);
-            });
-
-            locationSelect.disabled = false;
-        } catch (error) {
-            console.error('Error loading properties:', error);
-            alert('Hiba történt az ingatlanok betöltése közben');
-        }
-    }
-
-    // Update the openModal function
-    async function openModal() {
-        modalBackdrop.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        maintenanceForm.reset();
-        await loadProperties('location'); // Explicitly passing the select element ID
-    }
-
     function closeModal() {
         modalBackdrop.classList.remove('active');
         document.body.style.overflow = 'auto';
@@ -129,13 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const taskData = taskSnapshot.data();
             
-            // Load properties first
-            await loadProperties('editLocation');
-            
             // Set form values
             document.getElementById('editTaskId').value = taskId;
             document.getElementById('editTitle').value = taskData.title;
-            document.getElementById('editLocation').value = taskData.propertyId; // Use propertyId here
             document.getElementById('editPriority').value = taskData.priority;
             document.getElementById('editStatus').value = taskData.status;
             document.getElementById('editDescription').value = taskData.description;
@@ -154,9 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBackdrop.classList.add('active');
         document.body.style.overflow = 'hidden';
         
-        // Reset form and load properties
+        // Reset form
         maintenanceForm.reset();
-        await loadProperties('location');
     });
     closeModalBtn.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
@@ -176,27 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form submission handler
     maintenanceForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const propertyId = document.getElementById('location').value;
         
-        if (!propertyId) {
-            alert('Kérjük válasszon egy ingatlant!');
-            return;
-        }
-
         const submitBtn = maintenanceForm.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
-            // Get property details
-            const propertyRef = doc(db, 'properties', propertyId);
-            const propertySnap = await getDoc(propertyRef);
-            const propertyData = propertySnap.data();
-
             const formData = {
                 title: document.getElementById('title').value,
-                propertyId: propertyId,
-                location: propertyData.location, // Store the location name
                 priority: document.getElementById('priority').value,
                 description: document.getElementById('description').value,
                 status: document.getElementById('status').value || 'in_progress',
@@ -265,17 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const formData = new FormData(editForm);
             const taskId = formData.get('taskId');
-            const propertyId = document.getElementById('editLocation').value;
-            
-            // Get property details
-            const propertyRef = doc(db, 'properties', propertyId);
-            const propertySnap = await getDoc(propertyRef);
-            const propertyData = propertySnap.data();
 
             const updatedData = {
                 title: formData.get('title'),
-                propertyId: propertyId,
-                location: propertyData.location,
                 priority: formData.get('priority'),
                 status: formData.get('status'),
                 description: formData.get('description'),
@@ -350,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="status">${statusText[task.status] || task.status}</span>
             </div>
             <h3>${task.title}</h3>
-            <p class="location"><i class="fas fa-map-marker-alt"></i> ${task.location}</p>
             <p class="description">${task.description}</p>
             ${task.images.length > 0 ? `
                 <div class="task-images">

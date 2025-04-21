@@ -38,6 +38,20 @@
     color: #ef4444;
 }
 
+.stat-card .trend {
+    font-size: 0.9rem;
+    display: block;
+    margin-top: 0.5rem;
+}
+
+.stat-card .trend.positive {
+    color: #10b981;
+}
+
+.stat-card .trend.negative {
+    color: #ef4444;
+}
+
 .count {
     color: var(--gray);
     font-size: 0.9rem;
@@ -58,15 +72,22 @@
 }
 
 .transactions-filters {
-    display: flex;
-    gap: 1rem;
+    display: none;
 }
 
 .filter-select {
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background: white;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    min-width: 160px;
+    background-color: white;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .transactions-table {
@@ -79,6 +100,47 @@
     padding: 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
+}
+
+.transactions-table td.amount.negative {
+    color: #ef4444;
+}
+
+.transactions-table td.amount.positive {
+    color: #10b981;
+}
+
+.transactions-table .filter-row th {
+    padding: 0.5rem 1rem;
+    vertical-align: top;
+}
+
+.transactions-table .filter-row th:empty {
+    padding: 0;
+}
+
+.transactions-table thead tr:not(.filter-row) th {
+    padding-top: 1rem;
+}
+
+.search-filter {
+    position: relative;
+    width: 100%;
+}
+
+.search-filter input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.search-filter input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
 }
 
 .status {
@@ -241,4 +303,70 @@
     border-radius: 0.5rem;
     border: none;
     cursor: pointer;
+}
+
+/* Remove the tenant count from Függő Befizetések */
+.stat-card:nth-child(3) .count {
+    display: none;
+}
+
+.filters-container {
+    margin: 1rem 0 2rem 0;
+}
+
+.search-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-bar {
+    position: relative;
+    flex: 1;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.search-bar input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.search-bar i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray);
+    pointer-events: none;
+}
+
+.filter-select {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    min-width: 160px;
+    background-color: white;
+}
+
+/* Remove old header search styles */
+.dashboard-header .search-filters {
+    display: none;
+}
+
+/* Update header layout */
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
 }

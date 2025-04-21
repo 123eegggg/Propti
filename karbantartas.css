@@ -560,3 +560,16 @@
     color: #dc2626;
     font-size: 1.2rem;
 }
+
+.maintenance-card .property {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.maintenance-card .property i {
+    color: var(--primary);
+}
