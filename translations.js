@@ -139,6 +139,24 @@ export const translations = {
         'time-question': 'How much time do you spend on administrative tasks weekly?',
         'challenge-question': 'What is your biggest challenge in property management?',
 
+        // How it works section
+        'how-it-works-title': 'How Propti Works',
+        'registration-title': 'Registration',
+        'registration-desc': 'Register with a few clicks and start using it immediately.',
+        'free-trial': 'Free trial period',
+        'no-credit-card': 'No credit card needed',
+        'ready-in-2min': 'Ready in 2 minutes',
+        'add-properties-title': 'Add Properties',
+        'add-properties-desc': 'Add your properties and invite your tenants.',
+        'simple-data-entry': 'Simple data entry',
+        'auto-tenant-invites': 'Automatic tenant invitations',
+        'doc-upload': 'Document uploading',
+        'start-using-title': 'Start Using',
+        'start-using-desc': 'And done! Now you can easily manage all your properties.',
+        'instant-overview': 'Instant overview',
+        'auto-notifications': 'Automatic notifications',
+        'support-247': '24/7 support',
+
         // Pricing section
         'pricing-title': 'Choose the Right Package',
         'pricing-subtitle': 'Simple, transparent pricing for every portfolio size.',
