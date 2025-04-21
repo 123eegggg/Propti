@@ -30,6 +30,24 @@ export const translations = {
         'easy-maintenance': 'Karbantartás Egyszerűen',
         'easy-maintenance-desc': 'A bérlők fotóval jelzik a problémát, Ön pedig azonnal intézkedhet.',
 
+        // How it works section
+        'how-it-works-title': 'Így Működik a Propti',
+        'registration-title': 'Regisztráció',
+        'registration-desc': 'Pár kattintással regisztráljon, és azonnal kezdheti használni.',
+        'free-trial': 'Ingyenes próbaidőszak',
+        'no-credit-card': 'Nincs szükség bankkártyára',
+        'ready-in-2min': '2 perc alatt kész',
+        'add-properties-title': 'Ingatlanok Hozzáadása',
+        'add-properties-desc': 'Adja hozzá ingatlanjait, és hívja meg bérlőit.',
+        'simple-data-entry': 'Egyszerű adatbevitel',
+        'auto-tenant-invites': 'Automatikus bérlői meghívók',
+        'doc-upload': 'Dokumentumok feltöltése',
+        'start-using-title': 'Használat Kezdése',
+        'start-using-desc': 'És kész! Most már egyszerűen kezelheti minden ingatlanját.',
+        'instant-overview': 'Azonnali áttekintés',
+        'auto-notifications': 'Automatikus értesítések',
+        'support-247': '24/7 támogatás',
+
         // Calculator section
         'calc-title': 'Számoljuk Ki Az Ön Időmegtakarítását',
         'calc-subtitle': 'Válaszoljon néhány kérdésre, és megtudja, mennyi időt és energiát takaríthat meg a Propti használatával.',
@@ -131,6 +149,24 @@ export const translations = {
         'secure-docs-desc': 'All contracts and documents securely stored and accessible anytime.',
         'easy-maintenance': 'Easy Maintenance',
         'easy-maintenance-desc': 'Tenants report issues with photos, and you can take immediate action.',
+
+        // How it works section
+        'how-it-works-title': 'How Propti Works',
+        'registration-title': 'Registration',
+        'registration-desc': 'Register with a few clicks and start using it immediately.',
+        'free-trial': 'Free trial period',
+        'no-credit-card': 'No credit card needed',
+        'ready-in-2min': 'Ready in 2 minutes',
+        'add-properties-title': 'Add Properties',
+        'add-properties-desc': 'Add your properties and invite your tenants.',
+        'simple-data-entry': 'Simple data entry',
+        'auto-tenant-invites': 'Automatic tenant invitations',
+        'doc-upload': 'Document uploading',
+        'start-using-title': 'Start Using',
+        'start-using-desc': 'And done! Now you can easily manage all your properties.',
+        'instant-overview': 'Instant overview',
+        'auto-notifications': 'Automatic notifications',
+        'support-247': '24/7 support',
 
         // Calculator section
         'calc-title': 'Calculate Your Time Savings',
