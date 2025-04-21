@@ -75,13 +75,12 @@
             </nav>
             <div class="user-profile">
                 <div class="user-info-container">
-                    <img src="assets/avatar.jpg" alt="User Avatar">
                     <div class="user-info">
-                        <h4>Kovács János</h4>
-                        <p>Tulajdonos</p>
+                        <h4 id="userDisplayName">Loading...</h4>
+                        <p>Bérlő</p>
                     </div>
                 </div>
-                <button class="logout-btn">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Kijelentkezés</span>
                 </button>
@@ -100,17 +99,17 @@
                         <div class="profile-form">
                             <div class="form-group">
                                 <label>Név</label>
-                                <input type="text" value="Kovács János">
+                                <input type="text" placeholder="Név" required>
                             </div>
                             <div class="form-group">
                                 <label>Email</label>
-                                <input type="email" value="kovacs.janos@email.com">
+                                <input type="email" placeholder="Email" required>
                             </div>
                             <div class="form-group">
                                 <label>Telefonszám</label>
-                                <input type="tel" value="+36 20 123 4567">
+                                <input type="tel" placeholder="Telefonszám">
                             </div>
-                            <button class="btn-primary">Mentés</button>
+                            <button type="button" class="btn-primary">Mentés</button>
                         </div>
                     </div>
                 </div>

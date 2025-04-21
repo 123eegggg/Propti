@@ -28,13 +28,12 @@
             </nav>
             <div class="user-profile">
                 <div class="user-info-container">
-                    <img src="https://ui-avatars.com/api/?name=Kovács+János&background=random" alt="User Avatar">
                     <div class="user-info">
-                        <h4>Kovács János</h4>
-                        <p>Tulajdonos</p>
+                        <h4 id="userDisplayName">Loading...</h4>
+                        <p>Bérlő</p>
                     </div>
                 </div>
-                <button class="logout-btn" onclick="window.location.href='index.html'">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Kijelentkezés</span>
                 </button>
@@ -86,7 +85,9 @@
                 </div>
                 <div class="form-group">
                     <label for="location">Helyszín</label>
-                    <input type="text" id="location" required>
+                    <select id="location" required>
+                        <option value="">Ingatlanok betöltése...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="priority">Prioritás</label>
@@ -98,7 +99,6 @@
                 <div class="form-group">
                     <label for="status">Állapot</label>
                     <select id="status" required>
-                        <option value="pending">Függőben</option>
                         <option value="in_progress">Folyamatban</option>
                         <option value="completed">Befejezett</option>
                     </select>
@@ -147,7 +147,9 @@
                 </div>
                 <div class="form-group">
                     <label for="editLocation">Helyszín</label>
-                    <input type="text" id="editLocation" required>
+                    <select id="editLocation" required>
+                        <option value="">Ingatlanok betöltése...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="editPriority">Prioritás</label>
@@ -159,7 +161,6 @@
                 <div class="form-group">
                     <label for="editStatus">Állapot</label>
                     <select id="editStatus" required>
-                        <option value="pending">Függőben</option>
                         <option value="in_progress">Folyamatban</option>
                         <option value="completed">Befejezett</option>
                     </select>
@@ -221,13 +222,11 @@
             div.className = `maintenance-card ${task.priority === 'urgent' ? 'urgent' : ''}`;
             
             const statusText = {
-                'pending': 'Függőben',
                 'in_progress': 'Folyamatban',
                 'completed': 'Befejezett'
             };
 
             const statusClass = {
-                'pending': 'pending',
                 'in_progress': 'in_progress',
                 'completed': 'completed'
             };
@@ -623,4 +622,3 @@
     </script>
 </body>
 </html>
-``` 

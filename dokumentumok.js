@@ -32,8 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Initialize Firebase references
-    const { db, collection, addDoc, query, where, getDocs } = window.fbDb;
-    const storage = window.fbStorage.storage;
+    const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
     const documentsRef = collection(db, 'documents');
 
     // Load documents immediately if user is authenticated
@@ -84,40 +83,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Form submission handler
-    documentForm.addEventListener('submit', async (e) => {
+    // Add file preview functionality
+    const fileInput = document.getElementById('documentFile');
+    const filePreview = document.getElementById('filePreview');
+    const editFileInput = document.getElementById('editDocumentFile');
+    const editFilePreview = document.getElementById('editFilePreview');
+
+    function updateFilePreview(input, preview) {
+        const file = input.files[0];
+        if (file) {
+            const previewText = preview.querySelector('p');
+            const icon = preview.querySelector('i');
+            icon.className = 'fas fa-file-pdf';
+            previewText.textContent = file.name;
+        }
+    }
+
+    fileInput.addEventListener('change', () => updateFilePreview(fileInput, filePreview));
+    editFileInput.addEventListener('change', () => updateFilePreview(editFileInput, editFilePreview));
+
+    // Handle document upload form submission
+    document.getElementById('newDocumentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const submitBtn = documentForm.querySelector('button[type="submit"]');
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
-            const user = window.fbAuth.auth.currentUser;
-            if (!user) throw new Error('No user logged in');
+            window.cloudinaryWidget.open();
 
-            const formData = new FormData(documentForm);
-            const propertySelect = document.getElementById('propertySelect');
-            const propertyLocation = propertySelect.options[propertySelect.selectedIndex].text;
+            // Wait for upload success
+            const uploadResult = await new Promise((resolve, reject) => {
+                document.addEventListener('cloudinaryUploadSuccess', (event) => {
+                    resolve(event.detail);
+                }, { once: true });
+                
+                // Add timeout for upload
+                setTimeout(() => reject(new Error('Feltöltési időtúllépés')), 60000);
+            });
 
-            // Save document data to Firestore
+            // Create document in Firestore
             const documentData = {
-                title: formData.get('title'),
-                type: formData.get('type'),
-                propertyId: formData.get('propertyId'),
-                propertyLocation: propertyLocation,
-                isSigned: formData.get('isSigned') === 'true',
+                title: form.querySelector('#documentTitle').value,
+                type: form.querySelector('#documentType').value,
+                propertyId: form.querySelector('#propertySelect').value,
+                isSigned: form.querySelector('#isSigned').value === 'true',
                 createdAt: new Date().toISOString(),
-                ownerId: user.uid
+                fileName: uploadResult.original_filename,
+                fileSize: uploadResult.bytes,
+                mimeType: uploadResult.resource_type + '/' + uploadResult.format,
+                cloudinaryId: uploadResult.public_id,
+                downloadURL: uploadResult.secure_url,
+                resourceType: uploadResult.resource_type,
+                ownerId: window.fbAuth.auth.currentUser.uid
             };
 
-            await addDoc(documentsRef, documentData);
-            closeDocumentModal();
-            loadDocuments(); // Refresh the list
-            alert('Dokumentum sikeresen mentve!');
+            const docRef = await window.fbDb.addDoc(
+                window.fbDb.collection(window.fbDb.db, 'documents'),
+                documentData
+            );
+
+            // Close modal and refresh
+            document.getElementById('newDocumentModal').style.display = 'none';
+            form.reset();
+            await loadDocuments();
+            alert('Dokumentum sikeresen feltöltve!');
 
         } catch (error) {
-            console.error('Error:', error);
-            alert('Hiba történt a mentés során: ' + error.message);
+            console.error('Error uploading document:', error);
+            alert('Hiba történt a dokumentum feltöltése közben: ' + error.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Mentés';
@@ -214,6 +249,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
             <div class="document-actions">
+                ${doc.downloadURL ? `
+                    <button class="btn-icon view-pdf" onclick="showPDF('${doc.downloadURL}')" title="Megtekintés">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                ` : ''}
                 <button class="btn-icon" onclick="editDocument('${docId}')" title="Szerkesztés">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -226,14 +266,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         return card;
     }
 
+    // Make showPDF function globally available
+    async function showPDF(pdfUrl) {
+        try {
+            // Ensure we're using HTTPS URL
+            const secureUrl = pdfUrl.replace('http://', 'https://');
+            
+            const loadingTask = pdfjsLib.getDocument({
+                url: secureUrl,
+                withCredentials: false // Don't send cookies
+            });
+            
+            const pdf = await loadingTask.promise;
+            window.pdfDoc = pdf;
+            window.pageNum = 1;
+            
+            const canvas = document.getElementById('pdfCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            async function renderPage(num) {
+                const page = await pdf.getPage(num);
+                const viewport = page.getViewport({ scale: 1.5 });
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+                
+                document.getElementById('pageNum').textContent = num;
+            }
+            
+            await renderPage(1);
+            document.getElementById('pageCount').textContent = pdf.numPages;
+            document.getElementById('pdfViewerModal').style.display = 'block';
+            
+            // Setup navigation buttons
+            document.getElementById('prevPage').onclick = () => {
+                if (window.pageNum <= 1) return;
+                window.pageNum--;
+                renderPage(window.pageNum);
+            };
+            
+            document.getElementById('nextPage').onclick = () => {
+                if (window.pageNum >= pdf.numPages) return;
+                window.pageNum++;
+                renderPage(window.pageNum);
+            };
+            
+        } catch (error) {
+            console.error('Error showing PDF:', error);
+            alert('Hiba történt a PDF megjelenítése közben: ' + error.message);
+        }
+    }
+
+    // Make showPDF available globally
+    window.showPDF = showPDF;
+
     // Add edit document functionality
     window.editDocument = async (documentId) => {
         const editModal = document.getElementById('editDocumentModal');
         const editForm = document.getElementById('editDocumentForm');
         
         try {
-            const docRef = window.fbDb.doc(window.fbDb.db, 'documents', documentId);
-            const docSnap = await window.fbDb.getDoc(docRef);
+            const docRef = doc(db, 'documents', documentId);
+            const docSnap = await getDoc(docRef);
             
             if (docSnap.exists()) {
                 const data = docSnap.data();
@@ -247,6 +346,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('editDocumentType').value = data.type;
                 document.getElementById('editPropertySelect').value = data.propertyId || '';
                 document.getElementById('editIsSigned').value = (data.isSigned === true).toString(); // Fixed this line
+
+                // Update file preview if exists
+                const currentFileText = document.querySelector('#editFilePreview .current-file');
+                if (data.downloadURL) {
+                    currentFileText.style.display = 'block';
+                    currentFileText.querySelector('span').textContent = 'PDF dokumentum feltöltve';
+                } else {
+                    currentFileText.style.display = 'none';
+                }
                 
                 // Show modal
                 editModal.style.display = 'block';
@@ -261,39 +369,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Edit form submission handler
     document.getElementById('editDocumentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
-            const user = window.fbAuth.auth.currentUser;
-            if (!user) throw new Error('No user logged in');
-
-            const formData = new FormData(e.target);
-            const documentId = formData.get('documentId');
-            const propertySelect = document.getElementById('editPropertySelect');
-            const propertyLocation = propertySelect.options[propertySelect.selectedIndex].text;
-
-            const documentData = {
-                title: formData.get('title'),
-                type: formData.get('type'),
-                propertyId: formData.get('propertyId'),
-                propertyLocation: propertyLocation,
-                isSigned: formData.get('isSigned') === 'true',
+            const documentId = form.querySelector('#editDocumentId').value;
+            let documentData = {
+                title: form.querySelector('#editDocumentTitle').value,
+                type: form.querySelector('#editDocumentType').value,
+                propertyId: form.querySelector('#editPropertySelect').value,
+                isSigned: form.querySelector('#editIsSigned').value === 'true',
                 updatedAt: new Date().toISOString()
             };
 
-            const docRef = window.fbDb.doc(window.fbDb.db, 'documents', documentId);
-            await window.fbDb.updateDoc(docRef, documentData);
-            
+            // If new file is selected, upload it
+            const fileInput = form.querySelector('#editDocumentFile');
+            if (fileInput.files.length > 0) {
+                window.cloudinaryWidget.open();
+
+                // Wait for upload success
+                const uploadResult = await new Promise((resolve, reject) => {
+                    document.addEventListener('cloudinaryUploadSuccess', (event) => {
+                        resolve(event.detail);
+                    }, { once: true });
+                    
+                    // Add timeout for upload
+                    setTimeout(() => reject(new Error('Feltöltési időtúllépés')), 60000);
+                });
+
+                // Add new file information
+                documentData = {
+                    ...documentData,
+                    fileName: uploadResult.original_filename,
+                    fileSize: uploadResult.bytes,
+                    mimeType: uploadResult.resource_type + '/' + uploadResult.format,
+                    cloudinaryId: uploadResult.public_id,
+                    downloadURL: uploadResult.secure_url,
+                    resourceType: uploadResult.resource_type
+                };
+            }
+
+            // Update document in Firestore
+            await window.fbDb.updateDoc(
+                window.fbDb.doc(window.fbDb.db, 'documents', documentId),
+                documentData
+            );
+
+            // Close modal and refresh
             document.getElementById('editDocumentModal').style.display = 'none';
-            document.body.style.overflow = 'auto';
             await loadDocuments();
             alert('Dokumentum sikeresen módosítva!');
 
         } catch (error) {
-            console.error('Error:', error);
-            alert('Hiba történt a mentés során: ' + error.message);
+            console.error('Error updating document:', error);
+            alert('Hiba történt a dokumentum módosítása közben: ' + error.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Mentés';
@@ -317,8 +448,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const docRef = window.fbDb.doc(window.fbDb.db, 'documents', documentId);
+            const docSnap = await window.fbDb.getDoc(docRef);
+            const documentData = docSnap.data();
+
+            if (documentData.cloudinaryId) {
+                // Delete from Cloudinary using the upload preset
+                const formData = new FormData();
+                formData.append('public_id', documentData.cloudinaryId);
+                formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+                
+                try {
+                    const destroyResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/destroy`, {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                        credentials: 'omit'
+                    });
+
+                    if (!destroyResponse.ok) {
+                        console.warn('Failed to delete from Cloudinary:', await destroyResponse.json());
+                    }
+                } catch (error) {
+                    console.warn('Error deleting from Cloudinary:', error);
+                    // Continue with Firestore deletion even if Cloudinary deletion fails
+                }
+            }
+
             await window.fbDb.deleteDoc(docRef);
             await loadDocuments();
+            alert('Dokumentum sikeresen törölve!');
         } catch (error) {
             console.error('Error deleting document:', error);
             alert('Hiba történt a dokumentum törlésekor');
@@ -366,5 +524,116 @@ document.addEventListener('DOMContentLoaded', async () => {
                     signStatus.includes(searchTerm) ? 'flex' : 'none';
             });
         }, 300);
+    });
+
+    // PDF.js functionality
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    const scale = 1.5;
+    const canvas = document.getElementById('pdfCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Initialize PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf/build/pdf.worker.mjs';
+
+    async function renderPage(num) {
+        pageRendering = true;
+        const page = await pdfDoc.getPage(num);
+        const viewport = page.getViewport({ scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        try {
+            await page.render(renderContext).promise;
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        } catch (error) {
+            console.error('Error rendering PDF page:', error);
+            pageRendering = false;
+        }
+
+        document.getElementById('pageNum').textContent = num;
+    }
+
+    function queueRenderPage(num) {
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+    }
+
+    // PDF viewer controls
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (pageNum <= 1) return;
+        pageNum--;
+        queueRenderPage(pageNum);
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+        if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+        pageNum++;
+        queueRenderPage(pageNum);
+    });
+
+    // Close PDF viewer
+    document.querySelector('#pdfViewerModal .close-modal').addEventListener('click', () => {
+        document.getElementById('pdfViewerModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        pdfDoc = null;
+        pageNum = 1;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // Close PDF viewer when clicking outside
+    document.getElementById('pdfViewerModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('pdfViewerModal')) {
+            document.getElementById('pdfViewerModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            pdfDoc = null;
+            pageNum = 1;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    });
+
+    // Initialize user display and logout functionality
+    const { auth } = window.fbAuth;
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Update user display name
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
     });
 });

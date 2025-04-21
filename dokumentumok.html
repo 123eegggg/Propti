@@ -3,11 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self' https://*.cloudinary.com https://*.googleapis.com https://firestore.googleapis.com;
+        img-src 'self' data: blob: https://*.cloudinary.com;
+        script-src 'self' 'unsafe-inline' https://*.cloudinary.com https://*.googleapis.com https://upload-widget.cloudinary.com https://cdnjs.cloudflare.com https://www.gstatic.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+        font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+        media-src 'self' blob: https://*.cloudinary.com;
+        connect-src 'self' https://*.cloudinary.com https://*.googleapis.com https://firestore.googleapis.com https://www.googleapis.com;
+        frame-src 'self' https://*.cloudinary.com">
     <title>Propti - Dokumentumok Kezelése</title>
+    
+    <!-- Stylesheets -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="dokumentumok.css">
+    
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <!-- Cloudinary SDK -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -28,13 +48,12 @@
             </nav>
             <div class="user-profile">
                 <div class="user-info-container">
-                    <img src="https://ui-avatars.com/api/?name=Kovács+János&background=random" alt="User Avatar">
                     <div class="user-info">
-                        <h4>Kovács János</h4>
-                        <p>Tulajdonos</p>
+                        <h4 id="userDisplayName">Loading...</h4>
+                        <p>Bérlő</p>
                     </div>
                 </div>
-                <button class="logout-btn" onclick="window.location.href='index.html'">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Kijelentkezés</span>
                 </button>
@@ -101,6 +120,16 @@
                                 <option value="true">Igen</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="documentFile">PDF dokumentum</label>
+                            <div class="file-upload-area">
+                                <input type="file" id="documentFile" name="file" accept=".pdf">
+                                <div id="filePreview">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Kattintson vagy húzza ide a PDF fájlt</p>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-actions">
                             <button type="button" class="btn-secondary" id="cancelDocument">Mégsem</button>
                             <button type="submit" class="btn-primary">Mentés</button>
@@ -144,11 +173,40 @@
                                 <option value="true">Igen</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="editDocumentFile">PDF dokumentum</label>
+                            <div class="file-upload-area">
+                                <input type="file" id="editDocumentFile" name="file" accept=".pdf">
+                                <div id="editFilePreview">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Kattintson vagy húzza ide a PDF fájlt</p>
+                                    <p class="current-file" style="display:none">Jelenlegi fájl: <span></span></p>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-actions">
                             <button type="button" class="btn-secondary" id="cancelEditDocument">Mégsem</button>
                             <button type="submit" class="btn-primary">Mentés</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- PDF Viewer Modal -->
+            <div id="pdfViewerModal" class="modal">
+                <div class="modal-content pdf-viewer-content">
+                    <div class="modal-header">
+                        <h2>PDF Dokumentum</h2>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div id="pdfContainer">
+                        <canvas id="pdfCanvas"></canvas>
+                    </div>
+                    <div class="pdf-controls">
+                        <button id="prevPage">Előző</button>
+                        <span>Oldal: <span id="pageNum"></span> / <span id="pageCount"></span></span>
+                        <button id="nextPage">Következő</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -166,21 +224,13 @@
             where,
             doc,
             deleteDoc,
-            getDoc,    // Add this
-            updateDoc  // Add this
+            getDoc,
+            updateDoc
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, uploadBytes, getDownloadURL } 
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAJIY7HyiQ6I_opPyMCApNiKgpc9RQeTY4",
-            authDomain: "propti-2a95d.firebaseapp.com",
-            projectId: "propti-2a95d",
-            storageBucket: "propti-2a95d.appspot.com",
-            messagingSenderId: "223311863074",
-            appId: "1:223311863074:web:2783282939934089d1197b"
-        };
+        import { firebaseConfig } from './config.js';
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -198,11 +248,56 @@
             getDocs, 
             doc, 
             deleteDoc,
-            getDoc,    // Add this
-            updateDoc  // Add this
+            getDoc,
+            updateDoc
         };
         window.fbStorage = { storage, ref, uploadBytes, getDownloadURL };
         window.fbAuth = { auth };
+    </script>
+    <!-- Initialize Cloudinary -->
+    <script type="module">
+        import { cloudinaryConfig } from './config.js';
+        
+        window.cloudinaryConfig = cloudinaryConfig;
+
+        // Initialize the upload widget configuration
+        window.cloudinaryWidget = cloudinary.createUploadWidget({
+            cloudName: cloudinaryConfig.cloudName,
+            uploadPreset: 'propti_documents',
+            folder: 'documents',
+            sources: ['local', 'url'],
+            maxFiles: 1,
+            clientAllowedFormats: ['pdf', 'png', 'jpg', 'jpeg'],
+            showAdvancedOptions: false,
+            cropping: false,
+            multiple: false,
+            defaultSource: 'local',
+            styles: {
+                palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#90A0B3",
+                    tabIcon: "#0078FF",
+                    menuIcons: "#5A616A",
+                    textDark: "#000000",
+                    textLight: "#FFFFFF",
+                    link: "#0078FF",
+                    action: "#FF620C",
+                    inactiveTabIcon: "#0E2F5A",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#E4EBF1"
+                }
+            }
+        }, (error, result) => {
+            if (!error && result && result.event === "success") {
+                console.log('Upload successful:', result.info);
+                window.lastUploadResult = result.info;
+                document.dispatchEvent(new CustomEvent('cloudinaryUploadSuccess', { 
+                    detail: result.info 
+                }));
+            }
+        });
     </script>
     <script src="dokumentumok.js"></script>
 </body>

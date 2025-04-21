@@ -47,15 +47,66 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const email = loginForm.querySelector('input[type="email"]').value;
         const password = loginForm.querySelector('input[type="password"]').value;
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+        
+        // Disable button and show loading state
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Bejelentkezés...';
 
         try {
+            // Check if Firebase Auth is initialized
+            if (!window.fbAuth || !window.fbAuth.auth) {
+                throw new Error('Firebase Authentication is not initialized');
+            }
+
             const { auth, signInWithEmailAndPassword } = window.fbAuth;
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            console.log('Login successful:', userCredential.user);
-            window.location.href = 'landlord_dashboard.html';
+            
+            // Add retry logic
+            let retryCount = 0;
+            const maxRetries = 3;
+            let lastError = null;
+
+            while (retryCount < maxRetries) {
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log('Login successful:', userCredential.user);
+                    window.location.href = 'landlord_dashboard.html';
+                    return;
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`Login attempt ${retryCount + 1} failed:`, error);
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+                    }
+                }
+            }
+            
+            // If we get here, all retries failed
+            throw lastError;
+
         } catch (error) {
             console.error('Login error:', error);
-            alert('Bejelentkezési hiba történt: ' + error.message);
+            let errorMessage = 'Bejelentkezési hiba történt';
+            
+            // Provide more specific error messages
+            if (error.code === 'auth/network-request-failed') {
+                errorMessage = 'Hálózati hiba történt. Kérjük, ellenőrizze az internetkapcsolatát.';
+            } else if (error.code === 'auth/user-not-found') {
+                errorMessage = 'Nem található felhasználó ezzel az email címmel.';
+            } else if (error.code === 'auth/wrong-password') {
+                errorMessage = 'Hibás jelszó.';
+            } else if (error.code === 'auth/too-many-requests') {
+                errorMessage = 'Túl sok sikertelen próbálkozás. Kérjük, próbálja újra később.';
+            } else if (error.message.includes('not initialized')) {
+                errorMessage = 'A rendszer inicializálása folyamatban van. Kérjük, próbálja újra.';
+            }
+            
+            alert(errorMessage);
+        } finally {
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.textContent = 'Bejelentkezés';
         }
     });
 
@@ -130,12 +181,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add authentication state observer
-    window.auth.onAuthStateChanged((user) => {
-        if (user) {
-            console.log('User is signed in:', user);
+    // Add authentication state observer and Firebase initialization
+    const checkAuthState = () => {
+        if (window.fbAuth && window.fbAuth.auth) {
+            window.fbAuth.auth.onAuthStateChanged((user) => {
+                if (user) {
+                    console.log('User is signed in:', user);
+                } else {
+                    console.log('User is signed out');
+                }
+            });
         } else {
-            console.log('User is signed out');
+            // If Firebase Auth is not ready yet, try again in a moment
+            setTimeout(checkAuthState, 100);
         }
-    });
+    };
+
+    // Start checking for Firebase Auth
+    checkAuthState();
 });

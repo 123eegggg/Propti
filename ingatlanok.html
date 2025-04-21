@@ -28,13 +28,12 @@
             </nav>
             <div class="user-profile">
                 <div class="user-info-container">
-                    <img src="assets/avatar.jpg" alt="User Avatar">
                     <div class="user-info">
-                        <h4>Kovács János</h4>
+                        <h4 id="userDisplayName">Loading...</h4>
                         <p>Tulajdonos</p>
                     </div>
                 </div>
-                <button class="logout-btn" onclick="window.location.href='index.html'">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Kijelentkezés</span>
                 </button>
@@ -51,8 +50,8 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button class="btn-primary new-property-btn" id="newPropertyBtn">
-                        <i class="fas fa-plus"></i>
+                    <button class="new-tenant-btn" id="newPropertyBtn">
+                        <i class="fas fa-house-circle-plus"></i>
                         <span>Új Ingatlan</span>
                     </button>
                 </div>
@@ -107,6 +106,56 @@
                 </div>
             </div>
 
+            <!-- Edit Property Modal -->
+            <div id="editPropertyModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" id="closeEditModal">&times;</span>
+                    <h2>Ingatlan Szerkesztése</h2>
+                    <form id="editPropertyForm">
+                        <input type="hidden" id="editPropertyId" name="propertyId">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="editLocation">Ingatlan Azonosító/Cím</label>
+                                <input type="text" id="editLocation" name="location" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editTenant">Bérlő Neve</label>
+                                <input type="text" id="editTenant" name="tenant">
+                            </div>
+                            <div class="form-group">
+                                <label for="editSize">Ingatlan Mérete (m²)</label>
+                                <input type="number" id="editSize" name="size" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editRent">Bérleti Díj (Ft/hó)</label>
+                                <input type="number" id="editRent" name="rent" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editIsRented">Kiadva</label>
+                                <select id="editIsRented" name="isRented" required>
+                                    <option value="false">Nem</option>
+                                    <option value="true">Igen</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editPropertyImage">Fénykép</label>
+                            <div class="image-upload-container">
+                                <input type="file" id="editPropertyImage" name="propertyImage" accept="image/*">
+                                <div class="image-preview" id="editImagePreview">
+                                    <i class="fas fa-upload"></i>
+                                    <span>Húzza ide a képet vagy kattintson a feltöltéshez</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn-secondary" id="cancelEditProperty">Mégse</button>
+                            <button type="submit" class="btn-primary">Mentés</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="content-wrapper">
                 <div class="properties-filters">
                     <button class="filter-btn active" data-filter="all" data-label="Összes">Összes (0)</button>
@@ -133,7 +182,7 @@
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, where, getDocs } 
+        import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } 
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, uploadBytes, getDownloadURL } 
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
@@ -145,7 +194,7 @@
 
         // Make Firebase services available globally
         window.fbAuth = { auth, onAuthStateChanged };
-        window.fbDb = { db, collection, addDoc, query, where, getDocs };
+        window.fbDb = { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc };
         window.fbStorage = { storage, ref, uploadBytes, getDownloadURL };
 
         // Check authentication state

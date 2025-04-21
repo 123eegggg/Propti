@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, addDoc, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Firebase configuration
@@ -18,21 +18,42 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 document.addEventListener('DOMContentLoaded', () => {
-    const { db, collection, addDoc, query, where, orderBy, getDocs } = window.fbDb;
+    const { db, collection, addDoc, query, where, orderBy, getDocs, doc, getDoc } = window.fbDb;
     const auth = window.fbAuth;
     const PAYMENTS_COLLECTION = 'payments';
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     const modal = document.getElementById('transactionModal');
     const form = document.getElementById('transactionForm');
     const tbody = document.querySelector('.transactions-table tbody');
 
-    // Check authentication
-    auth.onAuthStateChanged((user) => {
-        if (!user) {
+    // Update user display name
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+            // Initialize other penzugyek.js functionality here
+            await loadTransactions(user.uid);
+        } else {
             window.location.href = 'index.html';
-            return;
         }
-        loadTransactions(user.uid);
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
     });
 
     // Handle form submission

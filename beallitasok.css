@@ -154,3 +154,33 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(24px);
 }
+
+/* Simple user profile styles */
+.user-info-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 12px;
+    background-color: #f1f5f9;
+    border-radius: 8px;
+    margin: 8px;
+}
+
+.user-info-container img {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+}
+
+.user-info h4 {
+    font-size: 15px;
+    font-weight: normal;
+    color: #333;
+    margin: 0;
+}
+
+.user-info p {
+    font-size: 12px;
+    color: #666;
+    margin: 2px 0 0 0;
+}

@@ -1,4 +1,37 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const { auth } = window.fbAuth;
+    const { db, doc, getDoc } = window.fbDb;
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Update user display name
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+            // Initialize other berlok.js functionality here
+            await loadTenants();
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
+    });
+
     const tenantsGrid = document.querySelector('.tenants-grid');
     const newTenantBtn = document.getElementById('newTenantBtn');
     const tenantModal = document.getElementById('newTenantModal');
@@ -52,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         card.innerHTML = `
             <div class="tenant-header">
-                <img src="assets/avatar-placeholder.jpg" alt="Bérlő fotó">
                 <div class="tenant-info">
                     <h3>${tenant.name}</h3>
                     <p>${tenant.propertyName || 'Nincs hozzárendelt ingatlan'}</p>
@@ -107,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Modal handlers
-    newTenantBtn.addEventListener('click', () => {
+    newTenantBtn.addEventListener('click', async () => {
+        await loadProperties();
         tenantModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     });
@@ -127,11 +160,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const formData = new FormData(newTenantForm);
+            const propertyId = formData.get('propertyName');
+            
+            // Get property details
+            const { db, doc, getDoc } = window.fbDb;
+            const propertyRef = doc(db, 'properties', propertyId);
+            const propertySnap = await getDoc(propertyRef);
+            const propertyData = propertySnap.data();
+
             const tenantData = {
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                propertyName: formData.get('propertyName'),
+                propertyId: propertyId, // Store property ID
+                propertyName: propertyData.location, // Store property location
                 moveInDate: formData.get('moveInDate'),
                 contractTime: formData.get('contractTime'),
                 createdAt: new Date().toISOString(),
@@ -139,9 +181,16 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // Save to Firestore
-            const { db, collection, addDoc } = window.fbDb;
+            const { collection, addDoc } = window.fbDb;
             const tenantsRef = collection(db, 'tenants');
             await addDoc(tenantsRef, tenantData);
+
+            // Update property's tenant and isRented status
+            await updateDoc(propertyRef, {
+                tenant: formData.get('name'),
+                isRented: true,
+                updatedAt: new Date().toISOString()
+            });
 
             closeModalHandler();
             await loadTenants();
@@ -153,13 +202,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Function to handle edit button click
-    function handleEditClick(tenant) {
-        // Populate edit form with tenant data
+    async function handleEditClick(tenant) {
+        await loadProperties();
+        
+        // Get the currently assigned property
+        const currentPropertyId = tenant.propertyId;
+        const dropdown = document.getElementById('editPropertyName');
+
+        // Ensure the current property is visible in dropdown even if rented
+        const options = Array.from(dropdown.options);
+        const currentPropertyOption = options.find(option => option.value === currentPropertyId);
+        
+        // Set the selected property
+        if (currentPropertyOption) {
+            currentPropertyOption.selected = true;
+        }
+
+        // Populate rest of the form
         document.getElementById('editTenantId').value = tenant.id;
         document.getElementById('editName').value = tenant.name;
         document.getElementById('editEmail').value = tenant.email || '';
         document.getElementById('editPhone').value = tenant.phone || '';
-        document.getElementById('editPropertyName').value = tenant.propertyName || '';
         document.getElementById('editMoveInDate').value = tenant.moveInDate || '';
         document.getElementById('editContractTime').value = tenant.contractTime || '';
 
@@ -185,22 +248,52 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const formData = new FormData(editForm);
             const tenantId = formData.get('tenantId');
+            const newPropertyId = formData.get('propertyName');
+            
+            // Get property details
+            const { db, doc, getDoc, updateDoc } = window.fbDb;  // Add updateDoc here
+            const propertyRef = doc(db, 'properties', newPropertyId);
+            const propertySnap = await getDoc(propertyRef);
+            const propertyData = propertySnap.data();
+
+            // Check if there was a previous property
+            const tenantRef = doc(db, 'tenants', tenantId);
+            const tenantSnap = await getDoc(tenantRef);
+            const oldPropertyId = tenantSnap.data().propertyId;
+
+            // If property changed, update old property to vacant
+            if (oldPropertyId && oldPropertyId !== newPropertyId) {
+                const oldPropertyRef = doc(db, 'properties', oldPropertyId);
+                await updateDoc(oldPropertyRef, {
+                    tenant: '',
+                    isRented: false,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+
             const updatedData = {
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
-                propertyName: formData.get('propertyName'),
+                propertyId: newPropertyId,
+                propertyName: propertyData.location,
                 moveInDate: formData.get('moveInDate'),
                 contractTime: formData.get('contractTime'),
                 updatedAt: new Date().toISOString()
             };
 
-            const { db, doc, updateDoc } = window.fbDb;
-            const tenantRef = doc(db, 'tenants', tenantId);
+            // Update tenant
             await updateDoc(tenantRef, updatedData);
 
+            // Update new property
+            await updateDoc(propertyRef, {
+                tenant: formData.get('name'),
+                isRented: true,
+                updatedAt: new Date().toISOString()
+            });
+
             closeEditModal();
-            await loadTenants(); // Reload tenants to show updated data
+            await loadTenants();
             alert('Bérlő adatai sikeresen frissítve!');
         } catch (error) {
             console.error('Error updating tenant:', error);
@@ -208,17 +301,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Load tenants when auth state changes
-    window.fbAuth.auth.onAuthStateChanged((user) => {
-        if (user) {
-            loadTenants();
-        }
-    });
+    // Add new function to load properties
+    async function loadProperties() {
+        try {
+            const currentUser = window.fbAuth.auth.currentUser;
+            if (!currentUser) return;
 
-    // Initialize Firebase with updateDoc
-    window.fbDb = { 
-        ...window.fbDb, 
+            const { db, collection, query, where, getDocs } = window.fbDb;
+            const propertiesRef = collection(db, 'properties');
+            // Only filter by owner, show all properties
+            const q = query(propertiesRef, where('ownerId', '==', currentUser.uid));
+            const querySnapshot = await getDocs(q);
+
+            const properties = [];
+            querySnapshot.forEach((doc) => {
+                properties.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Populate both property dropdowns
+            const dropdowns = ['propertyName', 'editPropertyName'];
+            dropdowns.forEach(dropdownId => {
+                const dropdown = document.getElementById(dropdownId);
+                if (dropdown) {
+                    dropdown.innerHTML = '<option value="">Válasszon ingatlant...</option>';
+                    properties.forEach(property => {
+                        // Add rental status and current tenant info in the dropdown
+                        const rentedStatus = property.isRented ? 
+                            `(Kiadva - ${property.tenant || 'Névtelen bérlő'})` : 
+                            '(Üres)';
+                        dropdown.innerHTML += `
+                            <option value="${property.id}" ${property.isRented ? 'class="rented-property"' : ''}>
+                                ${property.location} ${rentedStatus}
+                            </option>
+                        `;
+                    });
+                }
+            });
+
+            return properties;
+        } catch (error) {
+            console.error('Error loading properties:', error);
+            return [];
+        }
+    }
+
+    // Initialize Firebase with additional methods
+    window.fbDb = {
+        ...window.fbDb,
         doc: window.fbDb.db.doc || window.fbDb.doc,
-        updateDoc: window.fbDb.db.updateDoc || window.fbDb.updateDoc 
+        getDoc: window.fbDb.db.getDoc || window.fbDb.getDoc,
+        updateDoc: window.fbDb.db.updateDoc || window.fbDb.updateDoc
     };
 });

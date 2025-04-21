@@ -28,13 +28,12 @@
             </nav>
             <div class="user-profile">
                 <div class="user-info-container">
-                    <img src="assets/avatar.jpg" alt="User Avatar">
                     <div class="user-info">
-                        <h4>Kovács János</h4>
-                        <p>Tulajdonos</p>
+                        <h4 id="userDisplayName">Loading...</h4>
+                        <p>Bérlő</p>
                     </div>
                 </div>
-                <button class="logout-btn" onclick="window.location.href='index.html'">
+                <button class="logout-btn" id="logoutBtn">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Kijelentkezés</span>
                 </button>
@@ -79,8 +78,10 @@
                                        required>
                             </div>
                             <div class="form-group">
-                                <label for="propertyName">Ingatlan Neve</label>
-                                <input type="text" id="propertyName" name="propertyName">
+                                <label for="propertyName">Ingatlan*</label>
+                                <select id="propertyName" name="propertyName" required>
+                                    <option value="">Válasszon ingatlant...</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="moveInDate">Beköltözés Dátuma</label>
@@ -123,8 +124,10 @@
                                        required>
                             </div>
                             <div class="form-group">
-                                <label for="editPropertyName">Ingatlan Neve</label>
-                                <input type="text" id="editPropertyName" name="propertyName">
+                                <label for="editPropertyName">Ingatlan*</label>
+                                <select id="editPropertyName" name="propertyName" required>
+                                    <option value="">Válasszon ingatlant...</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label for="editMoveInDate">Beköltözés Dátuma</label>
@@ -132,8 +135,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="editContractTime">Szerződés Időtartama</label>
-                                <input type="text" id="editContractTime" name="contractTime" 
-                                       placeholder="pl. 12 hónap">
+                                <input type="text" id="editContractTime" name="contractTime" placeholder="pl. 12 hónap">
                             </div>
                         </div>
                         <div class="modal-actions">
@@ -162,7 +164,7 @@
 
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, where, getDocs, doc, updateDoc } 
+        import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } 
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const app = initializeApp(firebaseConfig);
@@ -170,7 +172,7 @@
         const db = getFirestore(app);
 
         window.fbAuth = { auth, onAuthStateChanged };
-        window.fbDb = { db, collection, addDoc, query, where, getDocs, doc, updateDoc };
+        window.fbDb = { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc };
 
         // Check authentication state
         onAuthStateChanged(auth, (user) => {

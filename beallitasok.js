@@ -4,8 +4,15 @@ import { getFirestore, doc, getDoc, updateDoc } from 'https://www.gstatic.com/fi
 const auth = getAuth();
 const db = getFirestore();
 
-function getUserTypeDisplay(userType) {
-    return userType === 'tenant' ? 'Bérlő' : 'Bérbeadó';
+function updateUIWithUserData(userData, userEmail) {
+    // Update form fields
+    document.querySelector('input[type="text"]').value = userData.fullName || '';
+    document.querySelector('input[type="email"]').value = userData.email || userEmail;
+    document.querySelector('input[type="tel"]').value = userData.phoneNumber || '';
+    
+    // Update sidebar info
+    document.querySelector('.user-info h4').textContent = userData.fullName || 'Névtelen';
+    document.querySelector('.user-info p').textContent = userData.userType === 'tenant' ? 'Bérlő' : 'Bérbeadó';
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -15,63 +22,42 @@ onAuthStateChanged(auth, async (user) => {
             
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                
-                // Fill form with user data
-                document.querySelector('input[type="text"]').value = userData.fullName || '';
-                document.querySelector('input[type="email"]').value = userData.email || user.email;
-                document.querySelector('input[type="tel"]').value = userData.phoneNumber || '';
-                
-                // Update sidebar info
-                document.querySelector('.user-info h4').textContent = userData.fullName || '';
-                document.querySelector('.user-info p').textContent = getUserTypeDisplay(userData.userType);
+                updateUIWithUserData(userData, user.email);
 
-                // Add event listener to save button
+                // Setup save button handler
                 const saveButton = document.querySelector('.btn-primary');
-                
-                // Remove any existing event listeners
-                const newSaveButton = saveButton.cloneNode(true);
-                saveButton.parentNode.replaceChild(newSaveButton, saveButton);
-                
-                newSaveButton.addEventListener('click', async (event) => {
+                saveButton.addEventListener('click', async (event) => {
                     event.preventDefault();
-                    
-                    // Show loading state
-                    newSaveButton.disabled = true;
-                    const originalText = newSaveButton.textContent;
-                    newSaveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
+                    saveButton.disabled = true;
+                    const originalText = saveButton.textContent;
+                    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
                     try {
-                        const newFullName = document.querySelector('input[type="text"]').value;
-                        const newEmail = document.querySelector('input[type="email"]').value;
-                        const newPhoneNumber = document.querySelector('input[type="tel"]').value;
-
-                        // Create update data object
-                        const updateData = {
-                            fullName: newFullName,
-                            email: newEmail,
-                            phoneNumber: newPhoneNumber,
+                        const newData = {
+                            fullName: document.querySelector('input[type="text"]').value.trim(),
+                            email: document.querySelector('input[type="email"]').value.trim(),
+                            phoneNumber: document.querySelector('input[type="tel"]').value.trim(),
                             updatedAt: new Date().toISOString()
                         };
 
-                        // If email changed, update it in Firebase Auth
-                        if (newEmail !== user.email) {
-                            await updateEmail(user, newEmail);
+                        // Update email in Auth if changed
+                        if (newData.email !== user.email) {
+                            await updateEmail(user, newData.email);
                         }
 
                         // Update in Firestore
-                        await updateDoc(doc(db, 'users', user.uid), updateData);
-
-                        // Update UI
-                        document.querySelector('.user-info h4').textContent = newFullName;
-
+                        await updateDoc(doc(db, 'users', user.uid), newData);
+                        
+                        // Update UI with new data
+                        updateUIWithUserData(newData, newData.email);
+                        
                         alert('Beállítások sikeresen mentve!');
                     } catch (error) {
                         console.error('Error updating user data:', error);
                         alert('Hiba történt a mentés során: ' + error.message);
                     } finally {
-                        // Restore button state
-                        newSaveButton.disabled = false;
-                        newSaveButton.textContent = originalText;
+                        saveButton.disabled = false;
+                        saveButton.textContent = originalText;
                     }
                 });
             }
@@ -98,6 +84,78 @@ document.querySelectorAll('.notification-settings input[type="checkbox"]').forEa
             console.error('Error updating notification settings:', error);
             e.target.checked = !isEnabled;
             alert('Hiba történt a beállítások mentése során. Kérjük próbálja újra.');
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Update user display name
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    userDisplayNameElement.textContent = userData.fullName || user.email;
+                    
+                    // Populate settings form
+                    document.querySelector('input[type="text"]').value = userData.fullName || '';
+                    document.querySelector('input[type="email"]').value = userData.email || user.email;
+                    document.querySelector('input[type="tel"]').value = userData.phoneNumber || '';
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
+    });
+
+    // Handle settings form submission
+    const profileForm = document.querySelector('.profile-form');
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const submitBtn = profileForm.querySelector('.btn-primary');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Mentés...';
+
+        try {
+            const formData = {
+                fullName: profileForm.querySelector('input[type="text"]').value,
+                email: profileForm.querySelector('input[type="email"]').value,
+                phoneNumber: profileForm.querySelector('input[type="tel"]').value,
+                updatedAt: new Date().toISOString()
+            };
+
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, formData);
+            
+            // Update display name in the sidebar
+            userDisplayNameElement.textContent = formData.fullName;
+            
+            alert('Beállítások sikeresen mentve!');
+        } catch (error) {
+            console.error('Error updating user settings:', error);
+            alert('Hiba történt a beállítások mentése közben: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Mentés';
         }
     });
 });

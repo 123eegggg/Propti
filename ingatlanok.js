@@ -1,4 +1,40 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Firebase services
+    const { auth } = window.fbAuth;
+    const { db, collection, query, where, getDocs, doc, getDoc, updateDoc } = window.fbDb;
+    const { storage, ref, uploadBytes, getDownloadURL } = window.fbStorage;
+
+    // Initialize user display and logout functionality
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Update user display name
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+            loadProperties();
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
+    });
+
     const newPropertyBtn = document.getElementById('newPropertyBtn');
     const newPropertyModal = document.getElementById('newPropertyModal');
     const closeModal = document.querySelector('.close-modal');
@@ -46,60 +82,89 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form submission
     newPropertyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Show loading state
+        const submitBtn = newPropertyForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
             const formData = new FormData(newPropertyForm);
             
             // Get current user
-            const currentUser = window.fbAuth.auth.currentUser;
+            const currentUser = auth.currentUser;
             if (!currentUser) {
                 throw new Error('Nincs bejelentkezett felhasználó!');
             }
 
+            // Handle image upload first
+            let imageUrl = 'propti-logo.png'; // Default image
+            const imageFile = imageInput.files[0];
+
+            if (imageFile) {
+                try {
+                    // Check file size (5MB limit)
+                    if (imageFile.size > 5 * 1024 * 1024) {
+                        throw new Error('A kép mérete túl nagy. Maximum 5MB lehet.');
+                    }
+
+                    // Check file type
+                    if (!imageFile.type.startsWith('image/')) {
+                        throw new Error('Csak képfájlok engedélyezettek.');
+                    }
+
+                    // Create unique filename
+                    const timestamp = Date.now();
+                    const fileName = `${timestamp}_${imageFile.name}`;
+                    
+                    // Create storage reference with correct path
+                    const storageRef = ref(
+                        storage, 
+                        `storage/properties/${currentUser.uid}/${fileName}`
+                    );
+                    
+                    // Upload file
+                    await uploadBytes(storageRef, imageFile);
+                    
+                    // Get download URL
+                    imageUrl = await getDownloadURL(storageRef);
+                } catch (uploadError) {
+                    console.error('Image upload error:', uploadError);
+                    alert('Képfeltöltési hiba: ' + uploadError.message);
+                }
+            }
+
+            // Prepare property data
             const propertyData = {
                 location: formData.get('location'),
                 tenant: formData.get('tenant'),
                 size: Number(formData.get('size')),
                 rent: Number(formData.get('rent')),
                 isRented: formData.get('isRented') === 'true',
+                imageUrl: imageUrl,
                 createdAt: new Date().toISOString(),
                 ownerId: currentUser.uid,
                 updatedAt: new Date().toISOString()
             };
 
-            // Handle image upload
-            const imageFile = formData.get('propertyImage');
-            if (imageFile && imageFile.size > 0) {
-                try {
-                    const storage = window.fbStorage.storage;
-                    const storageRef = window.fbStorage.ref(storage, `properties/${currentUser.uid}/${Date.now()}_${imageFile.name}`);
-                    await window.fbStorage.uploadBytes(storageRef, imageFile);
-                    propertyData.imageUrl = await window.fbStorage.getDownloadURL(storageRef);
-                } catch (uploadError) {
-                    console.error('Image upload error:', uploadError);
-                    propertyData.imageUrl = 'assets/default-property.jpg'; // Fallback image
-                }
-            } else {
-                propertyData.imageUrl = 'assets/default-property.jpg'; // Default image if none provided
-            }
-
             // Save to Firestore
-            const { db, collection, addDoc } = window.fbDb;
             const propertiesRef = collection(db, 'properties');
-            const docRef = await addDoc(propertiesRef, propertyData);
+            await addDoc(propertiesRef, propertyData);
 
-            // Add property card to UI
-            addPropertyToUI(propertyData, docRef.id);
-            
             // Close modal and show success message
             closePropertyModal();
             alert('Ingatlan sikeresen hozzáadva!');
             
-            // Reload properties after adding new one
+            // Reload properties to show new addition
             await loadProperties();
+
         } catch (error) {
             console.error('Error adding property:', error);
-            alert('Hiba történt az ingatlan mentése közben: ' + error.message);
+            alert(error.message);
+        } finally {
+            // Reset loading state
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Mentés';
         }
     });
 
@@ -112,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         propertyCard.innerHTML = `
             <div class="property-image">
                 <img src="${propertyData.imageUrl}" alt="${propertyData.location}" 
-                     onerror="this.src='assets/default-property.jpg'">
+                     onerror="this.src='propti-logo.png'">
                 <span class="status-badge ${propertyData.isRented ? 'rented' : 'vacant'}">
                     ${propertyData.isRented ? 'Kiadva' : 'Üres'}
                 </span>
@@ -134,7 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             <div class="property-actions">
-                <button class="btn-icon" title="Szerkesztés"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon" title="Szerkesztés" onclick="editProperty('${propertyId}')">
+                    <i class="fas fa-edit"></i>
+                </button>
                 <button class="btn-icon" title="Dokumentumok"><i class="fas fa-file-alt"></i></button>
                 <button class="btn-icon" title="Több"><i class="fas fa-ellipsis-v"></i></button>
             </div>
@@ -142,20 +209,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelector('.properties-grid').appendChild(propertyCard);
     }
-});
 
-document.addEventListener('DOMContentLoaded', () => {
     const propertiesGrid = document.querySelector('.properties-grid');
     const filterButtons = document.querySelectorAll('.filter-btn');
     let properties = [];
 
-    // Initialize Firebase references
-    const { db, collection, query, where, getDocs } = window.fbDb;
-
     // Load properties from Firebase
     async function loadProperties() {
         try {
-            const currentUser = window.fbAuth.auth.currentUser;
+            const currentUser = auth.currentUser;
             if (!currentUser) {
                 console.error('No user logged in');
                 return;
@@ -164,17 +226,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const propertiesRef = collection(db, 'properties');
             const q = query(propertiesRef, where('ownerId', '==', currentUser.uid));
             const querySnapshot = await getDocs(q);
+            const propertiesGrid = document.querySelector('.properties-grid');
+            propertiesGrid.innerHTML = ''; // Clear existing content
 
             properties = [];
             querySnapshot.forEach((doc) => {
-                properties.push({ id: doc.id, ...doc.data() });
+                const property = { id: doc.id, ...doc.data() };
+                properties.push(property);
+                const propertyCard = createPropertyCard(property);
+                propertiesGrid.appendChild(propertyCard);
             });
 
-            console.log('Loaded properties:', properties); // Debug log
+            if (properties.length === 0) {
+                propertiesGrid.innerHTML = '<p class="no-properties">Nincsenek még ingatlanok</p>';
+            }
+
             updatePropertyCounts();
-            displayProperties('all');
         } catch (error) {
             console.error('Error loading properties:', error);
+            alert('Hiba történt az ingatlanok betöltése közben');
         }
     }
 
@@ -208,9 +278,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         card.innerHTML = `
             <div class="property-image">
-                <img src="${property.imageUrl || 'assets/default-property.jpg'}" 
+                <img src="${property.imageUrl || 'propti-logo.png'}" 
                      alt="${property.location}"
-                     onerror="this.src='assets/default-property.jpg'">
+                     onerror="this.src='propti-logo.png'">
                 <span class="status-badge ${property.isRented ? 'rented' : 'vacant'}">
                     ${property.isRented ? 'Kiadva' : 'Üres'}
                 </span>
@@ -247,6 +317,159 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
+    // Function to handle edit property
+    window.editProperty = async function(propertyId) {
+        const editPropertyModal = document.getElementById('editPropertyModal');
+        const editPropertyForm = document.getElementById('editPropertyForm');
+        const editImagePreview = document.getElementById('editImagePreview');
+
+        // Fetch property data
+        const propertyRef = doc(db, 'properties', propertyId);
+        const propertySnapshot = await getDoc(propertyRef);
+
+        if (propertySnapshot.exists()) {
+            const propertyData = propertySnapshot.data();
+
+            // Populate edit form
+            document.getElementById('editPropertyId').value = propertyId;
+            document.getElementById('editLocation').value = propertyData.location;
+            document.getElementById('editTenant').value = propertyData.tenant || '';
+            document.getElementById('editSize').value = propertyData.size;
+            document.getElementById('editRent').value = propertyData.rent;
+            document.getElementById('editIsRented').value = propertyData.isRented.toString();
+
+            // Display image preview
+            editImagePreview.innerHTML = propertyData.imageUrl ?
+                `<img src="${propertyData.imageUrl}" alt="Property Preview">` :
+                `<i class="fas fa-upload"></i><span>Húzza ide a képet vagy kattintson a feltöltéshez</span>`;
+
+            // Show edit modal
+            editPropertyModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        } else {
+            console.error('Property not found');
+            alert('Ingatlan nem található!');
+        }
+    };
+
+    const editPropertyModal = document.getElementById('editPropertyModal');
+    const editPropertyForm = document.getElementById('editPropertyForm');
+    const closeEditModal = document.getElementById('closeEditModal');
+    const cancelEditProperty = document.getElementById('cancelEditProperty');
+    const editImagePreview = document.getElementById('editImagePreview');
+
+    // Close modal functions
+    const closeEditPropertyModal = () => {
+        editPropertyModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        editPropertyForm.reset();
+        editImagePreview.innerHTML = '<i class="fas fa-upload"></i><span>Húzza ide a képet vagy kattintson a feltöltéshez</span>';
+    };
+
+    closeEditModal.addEventListener('click', closeEditPropertyModal);
+    cancelEditProperty.addEventListener('click', closeEditPropertyModal);
+
+    // Close edit modal when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === editPropertyModal) {
+            closeEditPropertyModal();
+        }
+    });
+
+    // Add image preview for edit modal
+    document.getElementById('editPropertyImage').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                editImagePreview.innerHTML = `<img src="${e.target.result}" alt="Property Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Edit form submission
+    editPropertyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Show loading state
+        const submitBtn = editPropertyForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
+
+        try {
+            const formData = new FormData(editPropertyForm);
+            const propertyId = document.getElementById('editPropertyId').value;
+
+            // Handle image upload
+            let imageUrl = 'propti-logo.png'; // Default image
+            const imageFile = document.getElementById('editPropertyImage').files[0];
+
+            if (imageFile) {
+                try {
+                    // Check file size (5MB limit)
+                    if (imageFile.size > 5 * 1024 * 1024) {
+                        throw new Error('A kép mérete túl nagy. Maximum 5MB lehet.');
+                    }
+
+                    // Check file type
+                    if (!imageFile.type.startsWith('image/')) {
+                        throw new Error('Csak képfájlok engedélyezettek.');
+                    }
+
+                    // Create unique filename
+                    const timestamp = Date.now();
+                    const fileName = `${timestamp}_${imageFile.name}`;
+
+                    // Create storage reference with correct path
+                    const storageRef = ref(
+                        storage,
+                        `storage/properties/${auth.currentUser.uid}/${fileName}`
+                    );
+
+                    // Upload file
+                    await uploadBytes(storageRef, imageFile);
+
+                    // Get download URL
+                    imageUrl = await getDownloadURL(storageRef);
+                } catch (uploadError) {
+                    console.error('Image upload error:', uploadError);
+                    alert('Képfeltöltési hiba: ' + uploadError.message);
+                }
+            }
+
+            // Prepare updated property data
+            const updatedPropertyData = {
+                location: formData.get('location'),
+                tenant: formData.get('tenant'),
+                size: Number(formData.get('size')),
+                rent: Number(formData.get('rent')),
+                isRented: formData.get('isRented') === 'true',
+                imageUrl: imageUrl,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Update in Firestore
+            const propertyRef = doc(db, 'properties', propertyId);
+            await updateDoc(propertyRef, updatedPropertyData);
+
+            // Close modal and show success message
+            closeEditPropertyModal();
+            alert('Ingatlan sikeresen frissítve!');
+
+            // Reload properties
+            await loadProperties();
+
+        } catch (error) {
+            console.error('Error updating property:', error);
+            alert('Hiba történt az ingatlan frissítése közben: ' + error.message);
+        } finally {
+            // Reset loading state
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Mentés';
+        }
+    });
+
     // Update property counts in filter buttons
     function updatePropertyCounts() {
         const counts = {
@@ -273,24 +496,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Load properties when auth state changes
-    window.fbAuth.auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged((user) => {
         if (user) {
             loadProperties();
-        }
-    });
-
-    // Reload properties after adding a new one
-    const newPropertyForm = document.getElementById('newPropertyForm');
-    newPropertyForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        try {
-            // ... existing form submission code ...
-            
-            // Reload properties after successful submission
-            await loadProperties();
-        } catch (error) {
-            console.error('Error submitting form:', error);
         }
     });
 });

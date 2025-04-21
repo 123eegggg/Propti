@@ -51,6 +51,12 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+/* Add subtle left border for normal priority */
+.maintenance-card:not(.urgent) {
+    border-left: 4px solid #FB923C;
+    background: linear-gradient(to right, #fff7ed, white);
+}
+
 .maintenance-card.urgent {
     border-left: 4px solid #ef4444;
     background: linear-gradient(to right, #fff5f5, white);
@@ -63,11 +69,21 @@
 }
 
 .priority-badge {
-    background: #fecaca;
-    color: #ef4444;
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.875rem;
+}
+
+/* Normal priority styling */
+.maintenance-card .priority-badge {
+    background: #ffedd5;
+    color: #FB923C;
+}
+
+/* Urgent priority styling (keeping existing red) */
+.maintenance-card.urgent .priority-badge {
+    background: #fecaca;
+    color: #ef4444;
 }
 
 .status {
@@ -430,6 +446,13 @@
     font-size: 0.875rem;
 }
 
+.image-upload-area p span {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
 .file-input {
     position: absolute;
     top: 0;
@@ -507,4 +530,33 @@
     transform: translateY(-50%);
     color: var(--gray);
     pointer-events: none;
+}
+
+.task-documents {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border);
+}
+
+.document-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #2563eb;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+
+.document-link:hover {
+    background-color: #f1f5f9;
+}
+
+.document-link i {
+    color: #dc2626;
+    font-size: 1.2rem;
 }

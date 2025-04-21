@@ -208,11 +208,18 @@
 
 .file-upload-area {
     border: 2px dashed var(--border);
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     padding: 2rem;
     text-align: center;
     cursor: pointer;
     position: relative;
+    transition: all 0.2s ease;
+    background: var(--bg-secondary);
+}
+
+.file-upload-area:hover {
+    border-color: var(--primary);
+    background: var(--light-green);
 }
 
 .file-upload-area input[type="file"] {
@@ -223,6 +230,34 @@
     left: 0;
     opacity: 0;
     cursor: pointer;
+}
+
+#filePreview, #editFilePreview {
+    color: var(--gray);
+}
+
+#filePreview i, #editFilePreview i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.current-file {
+    margin-top: 0.5rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* Add styles for the view button */
+.btn-icon[title="Megtekintés"] {
+    background: var(--light-blue);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-icon[title="Megtekintés"]:hover {
+    background: var(--primary);
+    color: white;
 }
 
 #filePreview {
@@ -291,4 +326,52 @@
     color: var(--error);
     padding: 2rem;
     font-size: 1.1rem;
+}
+
+/* PDF Viewer Styles */
+.pdf-viewer-content {
+    width: 90%;
+    height: 90vh;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+}
+
+#pdfContainer {
+    flex: 1;
+    overflow: auto;
+    background: #525659;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+#pdfCanvas {
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.pdf-controls {
+    padding: 15px;
+    text-align: center;
+    background: #f5f5f5;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.pdf-controls button {
+    padding: 8px 16px;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.pdf-controls button:hover {
+    background: #0056b3;
 }
