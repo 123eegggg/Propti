@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propti Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <a href="index.html">
+                    <img src="assets/propti-logo.svg" alt="Propti Logo">
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="landlord_dashboard.html" class="active"><i class="fas fa-home"></i> Áttekintés</a>
+                <a href="ingatlanok.html"><i class="fas fa-building"></i> Ingatlanok</a>
+                <a href="berlok.html"><i class="fas fa-users"></i> Bérlők</a>
+                <a href="penzugyek.html"><i class="fas fa-money-bill-wave"></i> Pénzügyek</a>
+                <a href="karbantartas.html"><i class="fas fa-tools"></i> Karbantartás</a>
+                <a href="dokumentumok.html"><i class="fas fa-file-alt"></i> Dokumentumok</a>
+                <a href="beallitasok.html"><i class="fas fa-cog"></i> Beállítások</a>
+            </nav>
+            <div class="user-profile">
+                <div class="user-info-container">
+                    <div class="user-info">
+                        <h4 id="userDisplayName">Loading...</h4>
+                        <p>Tulajdonos</p>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Kijelentkezés</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="dashboard-header">
+                <h1>Áttekintés</h1>
+                <div class="header-actions">
+                </div>
+            </header>
+
+            <div class="dashboard-stats">
+                <div class="stat-card properties-card">
+                    <h3>Összes Ingatlan</h3>
+                    <p class="stat-number">0</p>
+                    <p class="stat-change">0 az elmúlt hónapban</p>
+                </div>
+                <div class="stat-card tenants-card">
+                    <h3>Aktív Bérlők</h3>
+                    <p class="stat-number">0</p>
+                    <p class="stat-change">0 az elmúlt hónapban</p>
+                </div>
+                <div class="stat-card income-card">
+                    <h3>Havi Bevétel</h3>
+                    <p class="stat-number">0 Ft</p>
+                    <p class="stat-change">0% az előző hónaphoz képest</p>
+                </div>
+                <div class="stat-card maintenance-card">
+                    <h3>Függő Karbantartás</h3>
+                    <p class="stat-number">0</p>
+                    <p class="stat-change">0 sürgős</p>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="grid-item calendar-section">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Naptár</h3>
+                        </div>
+                        <div id="calendar"></div>
+                    </div>
+                </div>
+
+                <div class="grid-item recent-activities">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Legutóbbi Események</h3>
+                        </div>
+                        <div class="activity-list">
+                            <!-- Activities will be dynamically loaded here -->
+                            <div class="loading-state">
+                                <i class="fas fa-clock"></i>
+                                <p>Betöltés...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-item upcoming-payments">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Közelgő Befizetések</h3>
+                        </div>
+                        <div class="payments-table">
+                            <table class="dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ingatlan</th>
+                                        <th>Bérlő</th>
+                                        <th>Összeg</th>
+                                        <th>Határidő</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Payments will be populated dynamically -->
+                                    <tr>
+                                        <td colspan="4" class="loading-state">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                            <p>Betöltés...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <!-- Firebase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/hu.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, query, where, getDocs, orderBy, limit, getDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJIY7HyiQ6I_opPyMCApNiKgpc9RQeTY4",
+            authDomain: "propti-2a95d.firebaseapp.com",
+            projectId: "propti-2a95d",
+            storageBucket: "propti-2a95d.firebasestorage.app",
+            messagingSenderId: "223311863074",
+            appId: "1:223311863074:web:2783282939934089d1197b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null; // Add this at the top level
+        let calendar = null;
+
+        // Enable detailed error logging
+        const DEBUG = true;
+        function logDebug(message, data) {
+            if (DEBUG) {
+                console.log(`[Dashboard Debug] ${message}`, data || '');
+            }
+        }
+
+        // Add loading states
+        function setLoadingState(isLoading) {
+            const loadingElements = document.querySelectorAll('.stat-number, .stat-change');
+            loadingElements.forEach(el => {
+                el.style.opacity = isLoading ? '0.5' : '1';
+            });
+        }
+
+        async function loadDashboardStats() {
+            setLoadingState(true);
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                // Properties count
+                const propertiesQuery = query(
+                    collection(db, 'properties'), 
+                    where('ownerId', '==', user.uid)
+                );
+                const propertiesSnapshot = await getDocs(propertiesQuery);
+                const propertyCount = propertiesSnapshot.size;
+
+                // New properties this year
+                const startOfYear = new Date(new Date().getFullYear(), 0, 1); // January 1st of current year
+                const newPropertiesThisYear = propertiesSnapshot.docs.filter(doc => {
+                    const createdAt = new Date(doc.data().createdAt);
+                    return createdAt >= startOfYear;
+                }).length;
+
+                // Update properties display
+                const propertiesCard = document.querySelector('.properties-card');
+                propertiesCard.querySelector('.stat-number').textContent = propertyCount;
+                propertiesCard.querySelector('.stat-change').textContent = 
+                    `${newPropertiesThisYear} új ingatlan idén`;
+
+                // Tenants count
+                const tenantsQuery = query(collection(db, 'tenants'), 
+                    where('ownerId', '==', user.uid));
+                const tenantsSnapshot = await getDocs(tenantsQuery);
+                const tenantCount = tenantsSnapshot.docs.length;
+                
+                // New tenants in last month
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                const newTenants = tenantsSnapshot.docs.filter(doc => {
+                    const createdAt = new Date(doc.data().createdAt);
+                    return createdAt > oneMonthAgo;
+                }).length;
+
+                // Update tenants display
+                const tenantsCard = document.querySelector('.tenants-card');
+                tenantsCard.querySelector('.stat-number').textContent = tenantCount;
+                tenantsCard.querySelector('.stat-change').textContent = 
+                    `+${newTenants} az elmúlt hónapban`;
+
+                // Monthly income calculation using same logic as penzugyek.html
+                const currentMonth = new Date().getMonth();
+                const paymentsQuery = query(
+                    collection(db, 'payments'),
+                    where('ownerId', '==', user.uid),
+                    where('status', '==', 'paid')
+                );
+
+                const paymentsSnapshot = await getDocs(paymentsQuery);
+                
+                // Calculate current month's income
+                const monthlyIncome = paymentsSnapshot.docs
+                    .filter(doc => {
+                        const paymentDate = new Date(doc.data().date);
+                        return paymentDate.getMonth() === currentMonth;
+                    })
+                    .reduce((sum, doc) => {
+                        const amount = doc.data().amount;
+                        return amount >= 0 ? sum + amount : sum;
+                    }, 0);
+
+                // Calculate previous month's income
+                const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const prevMonthIncome = paymentsSnapshot.docs
+                    .filter(doc => {
+                        const paymentDate = new Date(doc.data().date);
+                        return paymentDate.getMonth() === prevMonth;
+                    })
+                    .reduce((sum, doc) => {
+                        const amount = doc.data().amount;
+                        return amount >= 0 ? sum + amount : sum;
+                    }, 0);
+
+                // Calculate percentage change
+                const percentChange = prevMonthIncome === 0 ? 100 :
+                    Math.round(((monthlyIncome - prevMonthIncome) / prevMonthIncome) * 100);
+
+                // Update income display with actual income
+                document.querySelector('.income-card .stat-number').textContent = 
+                    `${monthlyIncome.toLocaleString()} Ft`;
+                document.querySelector('.income-card .stat-change').textContent = 
+                    `${percentChange > 0 ? '+' : ''}${percentChange}% az előző hónaphoz képest`;
+
+                // Maintenance tasks - get actual pending tasks
+                const maintenanceQuery = query(
+                    collection(db, 'maintenance'),
+                    where('ownerId', '==', user.uid),
+                    where('status', '!=', 'completed') // This compound query requires an index
+                );
+                
+                const maintenanceSnapshot = await getDocs(maintenanceQuery);
+                const pendingTasks = maintenanceSnapshot.size;
+                const urgentTasks = maintenanceSnapshot.docs.filter(doc => 
+                    doc.data().priority === 'urgent'
+                ).length;
+
+                // Update maintenance display with actual values
+                document.querySelector('.maintenance-card .stat-number').textContent = pendingTasks;
+                document.querySelector('.maintenance-card .stat-change').textContent = 
+                    `${urgentTasks} sürgős`;
+                document.querySelector('.maintenance-card .stat-change').className = 
+                    `stat-change ${urgentTasks > 0 ? 'negative' : 'positive'}`;
+
+                console.log('Dashboard stats loaded:', {
+                    monthlyIncome,
+                    pendingTasks,
+                    urgentTasks
+                });
+
+            } catch (error) {
+                console.error('Error loading dashboard stats:', error);
+                // Show error state
+                document.querySelectorAll('.stat-card').forEach(card => {
+                    card.querySelector('.stat-number').textContent = '--';
+                    card.querySelector('.stat-change').textContent = 'Hiba történt';
+                    card.querySelector('.stat-change').className = 'stat-change negative';
+                });
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        async function loadDashboardData() {
+            const activityList = document.querySelector('.activity-list');
+            const paymentsTable = document.querySelector('.dashboard-table tbody');
+            
+            // Show loading state
+            activityList.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Adatok betöltése...</p>
+                </div>
+            `;
+            
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                // Load activities
+                const activitiesQuery = query(
+                    collection(db, 'activities'),
+                    where('ownerId', '==', user.uid),
+                    orderBy('timestamp', 'desc'),
+                    limit(5)
+                );
+                
+                const activitiesSnapshot = await getDocs(activitiesQuery);
+                activityList.innerHTML = '';
+
+                activitiesSnapshot.forEach(doc => {
+                    const activity = doc.data();
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    activityItem.innerHTML = `
+                        <i class="fas ${getActivityIcon(activity.type)} activity-icon"></i>
+                        <div class="activity-details">
+                            <p>${activity.description}</p>
+                            <span>${formatTimeAgo(activity.timestamp)}</span>
+                        </div>
+                    `;
+                    activityList.appendChild(activityItem);
+                });
+
+                // Handle empty states
+                if (activitiesSnapshot.empty) {
+                    activityList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>Még nincsenek események</p>
+                        </div>
+                    `;
+                }
+
+                // Load upcoming payments
+                const paymentsQuery = query(
+                    collection(db, 'payments'),
+                    where('ownerId', '==', user.uid),
+                    where('status', '==', 'pending'),
+                    where('dueDate', '>=', new Date().toISOString()),
+                    orderBy('dueDate', 'asc'),
+                    limit(5)
+                );
+
+                const paymentsSnapshot = await getDocs(paymentsQuery);
+                paymentsTable.innerHTML = '';
+
+                for (const doc of paymentsSnapshot.docs) {
+                    const payment = doc.data();
+                    const tenantDoc = await getDoc(doc(db, 'tenants', payment.tenantId));
+                    const tenant = tenantDoc.data();
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${payment.property}</td>
+                        <td>${tenant ? tenant.name : 'N/A'}</td>
+                        <td>${payment.amount.toLocaleString()} Ft</td>
+                        <td>${new Date(payment.dueDate).toLocaleDateString('hu-HU')}</td>
+                    `;
+                    paymentsTable.appendChild(row);
+                }
+
+                if (paymentsSnapshot.empty) {
+                    paymentsTable.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Nincsenek közelgő befizetések</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                // Show error states
+                activityList.innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Hiba történt az események betöltésekor</p>
+                    </div>
+                `;
+                paymentsTable.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="error-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Hiba történt a befizetések betöltésekor</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function getActivityIcon(type) {
+            const icons = {
+                'tenant_added': 'fa-user-plus',
+                'payment_received': 'fa-money-bill',
+                'maintenance_created': 'fa-tools',
+                'property_added': 'fa-building',
+                'default': 'fa-info-circle'
+            };
+            return icons[type] || icons.default;
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = new Date();
+            const activityTime = new Date(timestamp);
+            const diffInHours = Math.floor((now - activityTime) / (1000 * 60 * 60));
+            
+            if (diffInHours < 24) {
+                return `${diffInHours} órája`;
+            } else {
+                return activityTime.toLocaleDateString('hu-HU');
+            }
+        }
+
+        async function loadRecentActivities() {
+            if (!currentUser) return;
+            
+            const activityList = document.querySelector('.activity-list');
+            const collections = [
+                { name: 'tenants', icon: 'fas fa-user', type: 'Új bérlő' },
+                { name: 'properties', icon: 'fas fa-building', type: 'Új ingatlan' },
+                { name: 'payments', icon: 'fas fa-money-bill', type: 'Új kifizetés' },
+                { name: 'documents', icon: 'fas fa-file', type: 'Új dokumentum' },
+                { name: 'maintenance', icon: 'fas fa-tools', type: 'Karbantartási feladat' }
+            ];
+
+            try {
+                let allActivities = [];
+
+                for (const col of collections) {
+                    const q = query(
+                        collection(db, col.name),
+                        where('ownerId', '==', currentUser.uid),
+                        orderBy('createdAt', 'desc'),
+                        limit(5)
+                    );
+
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        allActivities.push({
+                            type: col.type,
+                            icon: col.icon,
+                            title: data.title || data.name || data.location || 'Névtelen elem',
+                            timestamp: data.createdAt,
+                            status: data.status,
+                            amount: data.amount,
+                        });
+                    });
+                }
+
+                // Sort by timestamp
+                allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // Take only the 10 most recent activities
+                allActivities = allActivities.slice(0, 10);
+
+                if (allActivities.length === 0) {
+                    activityList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>Nincs újabb aktivitás</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                activityList.innerHTML = allActivities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-icon ${activity.status || ''}">
+                            <i class="${activity.icon}"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-header">
+                                <span class="activity-type">${activity.type}</span>
+                                <span class="activity-time">${formatTimestamp(activity.timestamp)}</span>
+                            </div>
+                            <p class="activity-title">${activity.title}</p>
+                            ${activity.amount ? `<span class="activity-amount">${formatAmount(activity.amount)} Ft</span>` : ''}
+                            ${activity.status ? `<span class="activity-status ${activity.status}">${formatStatus(activity.status)}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                activityList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Hiba történt az események betöltésekor</p>
+                    </div>
+                `;
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) return 'Ma';
+            if (diffDays === 2) return 'Tegnap';
+            return date.toLocaleDateString('hu-HU');
+        }
+
+        function formatStatus(status) {
+            const statusMap = {
+                'pending': 'Függőben',
+                'in_progress': 'Folyamatban',
+                'completed': 'Befejezve'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatAmount(amount) {
+            return new Intl.NumberFormat('hu-HU').format(amount);
+        }
+
+        // Initialize calendar
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'hu',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek' // Removed timeGridWeek for simpler view
+                },
+                height: 400, // Fixed smaller height
+                dayMaxEvents: 2, // Limit number of events shown
+                views: {
+                    dayGridMonth: {
+                        dayMaxEvents: 2
+                    }
+                },
+                eventClick: function(info) {
+                    alert(info.event.title);
+                }
+            });
+            calendar.render();
+        }
+
+        // Load calendar events
+        async function loadCalendarEvents() {
+            try {
+                if (!currentUser) return;
+
+                const events = [];
+
+                // Load rent payment due dates
+                const paymentsQuery = query(
+                    collection(db, 'payments'),
+                    where('ownerId', '==', currentUser.uid),
+                    where('status', '==', 'pending')
+                );
+                const paymentsSnapshot = await getDocs(paymentsQuery);
+                
+                paymentsSnapshot.forEach(doc => {
+                    const payment = doc.data();
+                    events.push({
+                        title: `Bérleti díj esedékes - ${payment.property}`,
+                        start: payment.dueDate,
+                        color: '#10b981', // green
+                        allDay: true
+                    });
+                });
+
+                // Load maintenance tasks
+                const maintenanceQuery = query(
+                    collection(db, 'maintenance'),
+                    where('ownerId', '==', currentUser.uid),
+                    where('status', '!=', 'completed')
+                );
+                const maintenanceSnapshot = await getDocs(maintenanceQuery);
+
+                maintenanceSnapshot.forEach(doc => {
+                    const task = doc.data();
+                    events.push({
+                        title: `Karbantartás - ${task.title}`,
+                        start: task.scheduledDate || task.createdAt,
+                        color: task.priority === 'urgent' ? '#ef4444' : '#f59e0b',
+                        allDay: true
+                    });
+                });
+
+                // Clear existing events and add new ones
+                calendar.removeAllEvents();
+                calendar.addEventSource(events);
+
+            } catch (error) {
+                console.error('Error loading calendar events:', error);
+            }
+        }
+
+        // Initialize authentication listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user; // Set the currentUser
+                document.getElementById('userDisplayName').textContent = 
+                    user.displayName || user.email || 'Felhasználó';
+                
+                // Initialize calendar after authentication
+                initializeCalendar();
+                
+                // Load all dashboard data
+                await Promise.all([
+                    loadDashboardStats(),
+                    loadDashboardData(),
+                    loadRecentActivities(),
+                    loadCalendarEvents()
+                ]);
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Initialize logout button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            auth.signOut()
+                .then(() => window.location.href = 'index.html')
+                .catch(error => console.error('Error signing out:', error));
+        });
+    </script>
+</body>
+</html>

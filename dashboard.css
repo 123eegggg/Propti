@@ -1,0 +1,669 @@
+:root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --secondary: #f0fdf4;
+    --text: #334155;
+    --gray: #64748b;
+    --background: #f8fafc;
+    --sidebar: #ffffff;
+    --border: #e2e8f0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: var(--background);
+    color: var(--text);
+}
+
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 280px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+}
+
+.logo {
+    margin-bottom: 2rem;
+}
+
+.logo img {
+    height: 40px;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.sidebar-nav a {
+    padding: 1rem;
+    text-decoration: none;
+    color: var(--text);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sidebar-nav a:hover, .sidebar-nav a.active {
+    background: var(--secondary);
+    color: var(--primary);
+}
+
+.user-profile {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+/* Standardized user profile section */
+.user-info-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 12px;
+    background-color: #f1f5f9;
+    border-radius: 8px;
+    margin: 8px;
+}
+
+.user-info-container img {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-info h4 {
+    font-size: 15px;
+    font-weight: normal;
+    color: #333;
+    margin: 0;
+}
+
+.user-info p {
+    font-size: 12px;
+    color: #666;
+    margin: 2px 0 0 0;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: none;
+    background: none;
+    color: var(--gray);
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.logout-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.user-profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.main-content {
+    margin-left: 280px;
+    padding: 2rem;
+    width: calc(100% - 280px);
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.search-bar {
+    position: relative;
+    width: 300px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: white;
+}
+
+.search-bar i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray);
+}
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+.stat-change {
+    font-size: 0.9rem;
+}
+
+.stat-change.positive {
+    color: var(--primary);
+}
+
+.stat-change.negative {
+    color: #ef4444;
+}
+
+/* Adjust dashboard grid for better proportions */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr; /* Calendar 60%, others 20% each */
+    gap: 2rem;
+    height: 520px;
+    margin-bottom: 2rem;
+    align-items: stretch;
+}
+
+.grid-item {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    height: 100%; /* Make all items full height */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Calendar section styling */
+.calendar-section {
+    grid-column: auto;
+    margin-bottom: 0;
+    max-width: 900px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.calendar-section .dashboard-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 2rem 1.5rem 2rem;
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.07);
+    border-radius: 1.25rem;
+    background: #fff;
+    border: none;
+    min-width: 0;
+}
+
+#calendar {
+    flex: 1;
+    min-width: 0;
+    min-height: 350px;
+    max-width: 100%;
+    background: #f8fafc;
+    border-radius: 1rem;
+    padding: 1.5rem 1rem 1rem 1rem;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+    font-size: 1rem;
+}
+
+.fc .fc-toolbar {
+    margin-bottom: 1.5rem !important;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.5rem !important;
+    font-weight: 700;
+    color: #059669;
+    letter-spacing: 0.01em;
+}
+
+.fc .fc-button {
+    background: #10b981 !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    font-size: 1rem !important;
+    padding: 0.4rem 1.1rem !important;
+    box-shadow: 0 2px 8px 0 rgba(16,185,129,0.08);
+}
+
+.fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled):focus {
+    background: #059669 !important;
+}
+
+.fc .fc-daygrid-day {
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    transition: background 0.2s;
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+    background: #d1fae5;
+    border: 2px solid #10b981;
+}
+
+.fc .fc-daygrid-event {
+    background: #10b981 !important;
+    color: #fff !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+    box-shadow: 0 1px 4px 0 rgba(16,185,129,0.10);
+    padding: 0.25rem 0.7rem !important;
+}
+
+.fc .fc-col-header-cell {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #334155;
+    background: #f0fdf4;
+    border-radius: 0.5rem 0.5rem 0 0;
+    border: none;
+}
+
+/* Subtle hover effect for days */
+.fc .fc-daygrid-day:hover {
+    background: #e0f2fe;
+    cursor: pointer;
+}
+
+.recent-activities, .upcoming-payments {
+    min-width: 0;
+    max-width: 350px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.recent-activities .dashboard-card,
+.upcoming-payments .dashboard-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem 1rem 1rem;
+    border-radius: 1.25rem;
+    background: #fff;
+    border: none;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+    min-width: 0;
+}
+
+/* Recent Activities section */
+.recent-activities {
+    height: 100%;
+}
+
+.recent-activities .dashboard-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.activity-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Upcoming Payments section */
+.upcoming-payments {
+    height: 100%;
+}
+
+.upcoming-payments .dashboard-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.payments-table {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Card headers */
+.card-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Make calendar more compact */
+#calendar {
+    background: white;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.fc {
+    --fc-button-bg-color: var(--primary);
+    --fc-button-border-color: var(--primary);
+    --fc-button-hover-bg-color: var(--primary-dark);
+    --fc-button-hover-border-color: var(--primary-dark);
+    --fc-button-active-bg-color: var(--primary-dark);
+    --fc-button-active-border-color: var(--primary-dark);
+    --fc-today-bg-color: var(--secondary);
+    height: 450px !important;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: var(--background);
+}
+
+.activity-icon {
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.activity-details span {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dashboard-table th, .dashboard-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.dashboard-table th {
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.activity-feed {
+    height: 100%;
+}
+
+.activity-list {
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.activity-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.2s ease;
+}
+
+.activity-item:hover {
+    background-color: #f8fafc;
+}
+
+.activity-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.activity-icon i {
+    font-size: 1rem;
+    color: #64748b;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.activity-type {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.activity-title {
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+
+.activity-amount {
+    font-size: 0.875rem;
+    color: #059669;
+    font-weight: 500;
+}
+
+.activity-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    margin-left: 0.5rem;
+}
+
+.activity-status.pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.activity-status.in_progress {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.activity-status.completed {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+/* Loading, Empty and Error States */
+.loading-state,
+.empty-state,
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: var(--gray);
+    gap: 1rem;
+}
+
+.loading-state i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.empty-state i {
+    font-size: 2rem;
+    color: var(--gray);
+}
+
+.error-state i {
+    font-size: 2rem;
+    color: #ef4444;
+}
+
+.loading-state p,
+.empty-state p,
+.error-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Table Empty State */
+.dashboard-table td.empty-state,
+.dashboard-table td.error-state {
+    text-align: center;
+}
+
+/* Calendar Styles */
+.calendar-section {
+    grid-column: auto;
+    margin-bottom: 0;
+    max-width: none; /* Remove max-width limitation */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.calendar-section .dashboard-card {
+    height: 100%;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.75rem;
+    border: none;
+}
+
+#calendar {
+    background: white;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem; /* Smaller font size */
+}
+
+/* FullCalendar specific overrides */
+.fc {
+    --fc-button-bg-color: var(--primary);
+    --fc-button-border-color: var(--primary);
+    --fc-button-hover-bg-color: var(--primary-dark);
+    --fc-button-hover-border-color: var(--primary-dark);
+    --fc-button-active-bg-color: var(--primary-dark);
+    --fc-button-active-border-color: var(--primary-dark);
+    --fc-today-bg-color: var(--secondary);
+    height: 450px !important;
+}
+
+.fc .fc-toolbar {
+    margin-bottom: 0.5rem !important;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1rem !important; /* Smaller title */
+}
+
+.fc .fc-button {
+    padding: 0.25rem 0.5rem !important; /* Smaller buttons */
+    font-size: 0.75rem !important;
+}
+
+.fc .fc-daygrid-day {
+    height: 50px !important; /* Smaller day cells */
+}
+
+.fc .fc-daygrid-day-frame {
+    min-height: 50px !important;
+}
+
+.fc-event {
+    font-size: 0.75rem !important; /* Smaller event text */
+    padding: 0.1rem 0.25rem !important;
+}
+
+/* Responsive layout */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+        gap: 1.5rem;
+    }
+    .calendar-section, .recent-activities, .upcoming-payments {
+        max-width: 100%;
+        min-width: 0;
+        height: auto;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .calendar-section {
+        max-width: 100%;
+    }
+    
+    .fc {
+        height: 350px !important; /* Even smaller on mobile */
+    }
+}

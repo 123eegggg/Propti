@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propti - Ingatlankezelő Szoftver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="modal.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <img src="propti-logo.PNG" alt="Propti Logo">
+            </div>
+            <div class="nav-links">
+                <a href="#miert-propti" data-translate="miert-propti">Miért Propti?</a>
+                <a href="#calculator" data-translate="calculator">Időmegtakarítás</a>
+                <a href="#mukodes" data-translate="mukodes">Így Működik</a>
+                <a href="#arak" data-translate="arak">Árak</a>
+                <a href="#testimonials" data-translate="testimonials">Vélemények</a>
+                <a href="#faq" data-translate="faq">GYIK</a>
+                <a href="#kapcsolat" data-translate="kapcsolat">Kapcsolat</a>
+                <a href="#" id="loginBtn" class="btn-secondary" data-translate="login">Bejelentkezés</a>
+                <a href="#proba" class="btn-primary" data-translate="free-trial">Ingyenes Próba</a>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">
+                    <img src="https://flagcdn.com/w80/gb.png" alt="English" id="lang-flag">
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <h1 data-translate="hero-title">Búcsú a Papírmunkától, Hello Propti!</h1>
+            <h2 data-translate="hero-subtitle">Professzionális ingatlankezelő szoftver tulajdonosoknak</h2>
+            <div class="hero-buttons">
+                <a href="#proba" class="btn-primary" data-translate="try-free">Próbálja ki ingyen</a>
+                <a href="#mukodes" class="btn-secondary" data-translate="how-it-works">Így működik</a>
+            </div>
+        </section>
+
+        <section id="miert-propti">
+            <h2 data-translate="why-propti">Miért a Propti?</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <h3 data-translate="all-in-one">Minden Egy Helyen</h3>
+                    <p data-translate="all-in-one-desc">Nem kell több alkalmazás vagy papír - minden ingatlanját egy helyen kezelheti, egyszerűen és hatékonyan.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3 data-translate="direct-comm">Közvetlen Kommunikáció</h3>
+                    <p data-translate="direct-comm-desc">Felejtsen el nehézkes email váltásokat! A bérlőkkel közvetlenül beszélhet az alkalmazáson belül.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3 data-translate="auto-payments">Automatikus Fizetések</h3>
+                    <p data-translate="auto-payments-desc">Nem kell többé emlékeztni a bérlőket - a rendszer automatikusan küldi a fizetési emlékeztetőket.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3 data-translate="secure-docs">Biztonságos Dokumentumok</h3>
+                    <p data-translate="secure-docs-desc">Minden szerződés és dokumentum biztonságosan tárolva, bármikor elérhetően.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3 data-translate="maintenance">Karbantartás Egyszerűen</h3>
+                    <p data-translate="maintenance-desc">A bérlők fotóval jelzik a problémát, Ön pedig azonnal intézkedhet.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3 data-translate="smart-notifications">Okos Értesítések</h3>
+                    <p data-translate="smart-notifications-desc">Nem marad le semmiről - automatikus emlékeztetők minden fontos eseményre.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="calculator" class="center-section">
+            <h2 data-translate="calc-title">Számoljuk Ki Az Ön Időmegtakarítását</h2>
+            <p class="subtitle" data-translate="calc-subtitle">Válaszoljon néhány kérdésre, és megtudja, mennyi időt és energiát takaríthat meg a Propti használatával.</p>
+            
+            <div class="calculator-form">
+                <div class="question">
+                    <h3 data-translate="properties-question">Hány ingatlant kezel jelenleg?</h3>
+                    <div class="options">
+                        <button class="option" data-value="1-2">1-2 ingatlan</button>
+                        <button class="option" data-value="2-6">2-6 ingatlan</button>
+                        <button class="option" data-value="6+">6+ ingatlan</button>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <h3 data-translate="time-question">Mennyi időt tölt jelenleg az adminisztrációs feladatokkal hetente?</h3>
+                    <div class="options">
+                        <button class="option" data-value="1">1 óra</button>
+                        <button class="option" data-value="3">3 óra</button>
+                        <button class="option" data-value="6+">6+ óra</button>
+                    </div>
+                </div>
+
+                <div class="question">
+                    <h3 data-translate="challenge-question">Mi a legnagyobb kihívás az ingatlanok kezelésében?</h3>
+                    <div class="options">
+                        <button class="option" data-value="communication">Kommunikáció a bérlőkkel</button>
+                        <button class="option" data-value="admin">Adminisztráció</button>
+                        <button class="option" data-value="payments">Bérleti díjak követése</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculator-result" style="display: none;">
+                <h3>Az Ön személyre szabott megtakarítási terve</h3>
+                <div class="savings-stats">
+                    <div class="stat">
+                        <span class="number">70%</span>
+                        <span class="label">Időmegtakarítás</span>
+                    </div>
+                    <div class="stat">
+                        <span class="number">12</span>
+                        <span class="label">Óra/hó</span>
+                    </div>
+                    <div class="stat">
+                        <span class="number">144</span>
+                        <span class="label">Óra/év</span>
+                    </div>
+                </div>
+                <a href="#proba" class="btn-primary">Kezdje el most</a>
+            </div>
+        </section>
+
+        <section id="mukodes" class="center-section">
+            <h2>Így Működik a Propti</h2>
+            <div class="steps-container">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>Regisztráció</h3>
+                    <p>Pár kattintással regisztráljon, és azonnal kezdheti használni.</p>
+                    <ul class="step-details">
+                        <li>Ingyenes próbaidőszak</li>
+                        <li>Nincs szükség bankkártyára</li>
+                        <li>2 perc alatt kész</li>
+                    </ul>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>Ingatlanok Hozzáadása</h3>
+                    <p>Adja hozzá ingatlanjait, és hívja meg bérlőit.</p>
+                    <ul class="step-details">
+                        <li>Egyszerű adatbevitel</li>
+                        <li>Automatikus bérlői meghívók</li>
+                        <li>Dokumentumok feltöltése</li>
+                    </ul>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>Használat Kezdése</h3>
+                    <p>És kész! Most már egyszerűen kezelheti minden ingatlanját.</p>
+                    <ul class="step-details">
+                        <li>Azonnali áttekintés</li>
+                        <li>Automatikus értesítések</li>
+                        <li>24/7 támogatás</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="arak" class="center-section">
+            <h2 data-translate="pricing-title">Válassza Ki a Megfelelő Csomagot</h2>
+            <p class="subtitle" data-translate="pricing-subtitle">Egyszerű, átlátható árazás minden portfólió mérethez.</p>
+            
+            <div class="pricing-toggle">
+                <span data-translate="monthly">Havi díj</span>
+                <label class="switch">
+                    <input type="checkbox" id="pricingToggle">
+                    <span class="slider"></span>
+                </label>
+                <span data-translate="yearly">Éves díj</span> <span class="discount" data-translate="discount">10% kedvezmény</span>
+            </div>
+
+            <div class="pricing-cards horizontal-layout">
+                <div class="pricing-card">
+                    <h3 data-translate="starter">Kezdő</h3>
+                    <div class="price-container">
+                        <p class="price monthly">4.000 Ft<span>/hó</span></p>
+                        <p class="price yearly">43.200 Ft<span>/év</span></p>
+                    </div>
+                    <p class="price-description">Kezdő tulajdonosoknak, akik szeretnék automatizálni feladataikat.</p>
+                    <ul class="feature-list">
+                        <li>Online bérleti díj fizetés</li>
+                        <li>Karbantartás kezelés</li>
+                        <li>Hirdetések és jelentkezések</li>
+                    </ul>
+                    <a href="#register" class="btn-secondary">Kezdés</a>
+                </div>
+
+                <div class="pricing-card">
+                    <h3 data-translate="growth">Növekedési</h3>
+                    <div class="price-tag">Legnépszerűbb</div>
+                    <div class="price-container">
+                        <p class="price monthly">7.500 Ft<span>/hó</span></p>
+                        <p class="price yearly">81.000 Ft<span>/év</span></p>
+                    </div>
+                    <p class="price-description">Közepes és nagyobb portfólióval rendelkező tulajdonosoknak, akik további szervezési és bérlői eszközöket keresnek.</p>
+                    <ul class="feature-list">
+                        <li>Minden, ami a Kezdő csomagban van, plusz:</li>
+                        <li>Bővített jelentések</li>
+                        <li>Be-/Kiköltözési ellenőrzések</li>
+                        <li>Ingatlan üzenőfal</li>
+                    </ul>
+                    <a href="#register" class="btn-primary">Választás</a>
+                </div>
+
+                <div class="pricing-card">
+                    <h3 data-translate="pro">Profi</h3>
+                    <div class="price-container">
+                        <p class="price monthly">12.500 Ft<span>/hó</span></p>
+                        <p class="price yearly">135.000 Ft<span>/év</span></p>
+                    </div>
+                    <p class="price-description">Közepes és nagyobb portfólióval rendelkező tulajdonosoknak, akik prémium funkciókat és hatékonyságot keresnek.</p>
+                    <ul class="feature-list">
+                        <li>Minden, ami a Növekedési csomagban van, plusz:</li>
+                        <li>Adójelentések</li>
+                        <li>Banki egyeztetés</li>
+                        <li>Külön tulajdonosi portál</li>
+                    </ul>
+                    <a href="#register" class="btn-secondary">Választás</a>
+                </div>
+
+                <div class="pricing-card enterprise">
+                    <h3 data-translate="business">Üzleti</h3>
+                    <div class="price-container">
+                        <p class="price">Egyedi<span class="custom-price">25.000 Ft/hó-tól</span></p>
+                    </div>
+                    <p class="price-description">Nagyvállalatoknak, akik speciális, igényeikre szabott funkciókat keresnek.</p>
+                    <ul class="feature-list">
+                        <li>Minden, ami a Profi csomagban van, plusz:</li>
+                        <li>Csapatkezelés és eszközök</li>
+                        <li>Feladatkezelés</li>
+                        <li>Felhasználói felület testreszabása</li>
+                    </ul>
+                    <a href="#contact" class="btn-secondary">Kapcsolatfelvétel</a>
+                </div>
+            </div>
+
+            <div class="pricing-footer">
+                <button id="compareButton" class="compare-link">Összes csomag összehasonlítása</button>
+                <p class="pricing-note">Az árak nem tartalmazzák az esetlegesen alkalmazandó adókat.</p>
+                <p class="pricing-note">Regisztrációs folyamat elérhető. Az regisztrációs folyamat díjai a portfólió méretétől függően változnak.</p>
+            </div>
+
+            <div id="comparisonTable" class="comparison-table" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Funkciók</th>
+                            <th>Kezdő</th>
+                            <th>Növekedési</th>
+                            <th>Profi</th>
+                            <th>Üzleti</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Online bérleti díj fizetés</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Karbantartás kezelés</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Hirdetések és jelentkezések</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Bővített jelentések</td>
+                            <td>-</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Be-/Kiköltözési ellenőrzések</td>
+                            <td>-</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Adójelentések</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>✓</td>
+                            <td>✓</td>
+                        </tr>
+                        <tr>
+                            <td>Csapatkezelés</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="testimonials" class="center-section">
+            <h2 data-translate="testimonials-title">Mit Mondanak Rólunk?</h2>
+            <div class="testimonials-wrapper">
+                <button class="carousel-btn prev-btn" aria-label="Previous testimonials">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="testimonials-container">
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-1">"Végre nem kell aggódnom a bérleti díjak után. A Propti mindent automatikusan kezel!"</p>
+                        <div class="author">
+                            <p class="name">Kovács János</p>
+                            <p class="title">5 ingatlan tulajdonosa</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-2">"A bérlőimmel való kommunikáció soha nem volt ilyen egyszerű. Csak ajánlani tudom!"</p>
+                        <div class="author">
+                            <p class="name">Nagy Éva</p>
+                            <p class="title">Ingatlanügynök</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-3">"A dokumentumkezelés és a szerződések nyilvántartása végre rendszerezett. Rengeteg időt spórolok meg!"</p>
+                        <div class="author">
+                            <p class="name">Szabó Péter</p>
+                            <p class="title">Ingatlanbefektető</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-4">"Az automatikus értesítések és a karbantartási kérések kezelése hatalmas segítség a mindennapokban."</p>
+                        <div class="author">
+                            <p class="name">Kiss Andrea</p>
+                            <p class="title">Társasházkezelő</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-5">"A Propti mobilalkalmazásával bárhol, bármikor elérem az ingatlanjaim adatait. Tökéletes megoldás!"</p>
+                        <div class="author">
+                            <p class="name">Tóth Gábor</p>
+                            <p class="title">Vállalkozó</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-6">"Az adóbevallások és pénzügyi jelentések elkészítése sokkal egyszerűbb lett a Propti használatával."</p>
+                        <div class="author">
+                            <p class="name">Horváth Katalin</p>
+                            <p class="title">Könyvelő</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-7">"Nagyon elégedett vagyok a support csapattal, minden kérdésemre gyors és hasznos választ kapok."</p>
+                        <div class="author">
+                            <p class="name">Varga Márton</p>
+                            <p class="title">Kezdő befektető</p>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <p class="quote" data-translate="testimonial-8">"A csapatkezelés funkció tökéletes megoldás a nagyobb ingatlanportfóliók kezeléséhez."</p>
+                        <div class="author">
+                            <p class="name">Németh Zsolt</p>
+                            <p class="title">Ingatlankezelő cég vezetője</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-btn next-btn" aria-label="Next testimonials">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="carousel-dots"></div>
+        </section>
+
+        <section id="faq" class="center-section">
+            <h2 data-translate="faq-title">Gyakori Kérdések</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span data-translate="faq-1-q">Mennyire biztonságos a Propti?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p data-translate="faq-1-a">A legmagasabb biztonsági szabványokat követjük, minden adat titkosítva van, és rendszeresen biztonsági mentéseket készítünk.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span data-translate="faq-2-q">Mikor kezdhetem használni?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p data-translate="faq-2-a">Azonnal! Regisztráljon most, és pár percen belül elkezdheti használni az alkalmazást az ingyenes próbaidőszak alatt.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span data-translate="faq-3-q">Van mobilalkalmazás?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p data-translate="faq-3-a">Igen, mind iOS, mind Android rendszereken elérhető a Propti mobilalkalmazás, hogy útközben is kezelhesse ingatlanjait.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span data-translate="faq-4-q">Milyen támogatást nyújtanak?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p data-translate="faq-4-a">Email és chat támogatást kínálunk minden felhasználónknak. A Pro és Business csomagok prioritásos támogatást tartalmaznak.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span data-translate="faq-5-q">Le tudom mondani bármikor?</span>
+                        <span class="faq-icon">+</span>
+                    </button>
+                    <div class="faq-answer">
+                        <p data-translate="faq-5-a">Igen, az előfizetését bármikor lemondhatja, nincsenek hosszú távú szerződések vagy rejtett kötelezettségek.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="kapcsolat">
+            <h2 data-translate="contact-title">Kapcsolat</h2>
+            <form id="contact-form">
+                <input type="text" name="from_name" data-translate="name-placeholder" placeholder="Név" required>
+                <input type="email" name="user_email" data-translate="email-placeholder" placeholder="Email" required>
+                <textarea name="message" data-translate="message-placeholder" placeholder="Üzenet" required></textarea>
+                <button type="submit" class="btn-primary" data-translate="send-button">Küldés</button>
+            </form>
+        </section>
+    </main>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="logo">
+                <img src="propti-logo.PNG" alt="Propti Logo">
+            </div>
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <h2 data-translate="login-title">Bejelentkezés</h2>
+                <form>
+                    <input type="email" data-translate="email-input" placeholder="Email cím" required>
+                    <input type="password" data-translate="password-input" placeholder="Jelszó" required>
+                    <button type="submit" class="btn-primary" data-translate="login-button">Bejelentkezés</button>
+                </form>
+                <p class="auth-switch">
+                    <a href="#" id="showRegister" data-translate="register-prompt">Még nincs fiókja? Regisztráljon itt!</a>
+                </p>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <h2 data-translate="register-title">Regisztráció</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="userType" data-translate="user-type">Felhasználó típusa</label>
+                        <select name="userType" required>
+                            <option value="" data-translate="select-type">Válasszon típust</option>
+                            <option value="tenant" data-translate="tenant">Bérlő</option>
+                            <option value="landlord" data-translate="landlord">Bérbeadó</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fullName" data-translate="full-name">Teljes név</label>
+                        <input type="text" name="fullName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phoneNumber" data-translate="phone-number">Telefonszám</label>
+                        <input type="tel" name="phoneNumber" required pattern="[0-9+\-\s]+" data-translate="phone-validation" title="Kérjük, adjon meg egy érvényes telefonszámot">
+                    </div>
+                    <div class="form-group company-name-field" style="display: none;">
+                        <label for="companyName" data-translate="company-name">Cég neve</label>
+                        <input type="text" name="companyName">
+                    </div>
+                    <input type="email" data-translate="email-input" placeholder="Email cím" required>
+                    <input type="password" data-translate="password-input" placeholder="Jelszó" required>
+                    <input type="password" data-translate="confirm-password" placeholder="Jelszó megerősítése" required>
+                    <button type="submit" class="btn-primary" data-translate="register-button">Regisztráció</button>
+                </form>
+                <p class="auth-switch">
+                    <a href="#" id="showLogin" data-translate="login-prompt">Már van fiókja? Jelentkezzen be!</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-col">
+                <div class="logo">
+                    <img src="propti-logo.PNG" alt="Propti Logo">
+                </div>
+                <p class="footer-tagline" data-translate="footer-tagline">Az ingatlan kezelés egyszerűbb, mint valaha.</p>
+            </div>
+            
+            <div class="footer-col">
+                <h3 data-translate="contact-info">Kapcsolat</h3>
+                <p>Email: contact.propti@gmail.com</p>
+                <p>Tel: +36304447228</p>
+            </div>
+            
+            <div class="footer-col">
+                <h3 data-translate="follow-us">Kövessen Minket</h3>
+                <div class="social-links">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+
+            <div class="footer-col">
+                <div class="footer-links">
+                    <a href="#adatvedelem" data-translate="privacy-policy">Adatvédelem</a>
+                    <a href="#aszf" data-translate="terms">ÁSZF</a>
+                    <a href="#kapcsolat" data-translate="contact-info">Kapcsolat</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Initialize environment variables
+        window.env = {
+            FIREBASE_API_KEY: "AIzaSyAJIY7HyiQ6I_opPyMCApNiKgpc9RQeTY4",
+            FIREBASE_AUTH_DOMAIN: "propti-2a95d.firebaseapp.com",
+            FIREBASE_PROJECT_ID: "propti-2a95d",
+            FIREBASE_STORAGE_BUCKET: "propti-2a95d.firebasestorage.app",
+            FIREBASE_MESSAGING_SENDER_ID: "223311863074",
+            FIREBASE_APP_ID: "1:223311863074:web:2783282939934089d1197b"
+        };
+    </script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, connectAuthEmulator } 
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { translatePage } from './translations.js';
+
+        // Initialize translations
+        window.translatePage = translatePage;
+
+        const firebaseConfig = {
+            apiKey: window.env.FIREBASE_API_KEY,
+            authDomain: window.env.FIREBASE_AUTH_DOMAIN,
+            projectId: window.env.FIREBASE_PROJECT_ID,
+            storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: window.env.FIREBASE_MESSAGING_SENDER_ID,
+            appId: window.env.FIREBASE_APP_ID
+        };
+
+        // Initialize Firebase with retries
+        let app, auth, db;
+        const initializeFirebase = async (retryCount = 0) => {
+            try {
+                if (!app) {
+                    app = initializeApp(firebaseConfig);
+                }
+                if (!auth) {
+                    auth = getAuth(app);
+                    // Wait for auth to be ready
+                    await new Promise((resolve) => {
+                        const unsubscribe = auth.onAuthStateChanged((user) => {
+                            unsubscribe();
+                            resolve();
+                        });
+                    });
+                }
+                if (!db) {
+                    db = getFirestore(app);
+                }
+
+                // Make Firebase services available globally
+                window.fbAuth = {
+                    auth,
+                    createUserWithEmailAndPassword,
+                    signInWithEmailAndPassword
+                };
+                window.fbDb = {
+                    db,
+                    doc,
+                    setDoc
+                };
+
+                console.log('Firebase initialized successfully');
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                if (retryCount < 3) {
+                    console.log(`Retrying initialization (attempt ${retryCount + 1})`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                    await initializeFirebase(retryCount + 1);
+                } else {
+                    throw new Error('Failed to initialize Firebase after multiple attempts');
+                }
+            }
+        };
+
+        // Start initialization
+        initializeFirebase().catch(error => {
+            console.error('Fatal: Firebase initialization failed:', error);
+            alert('A rendszer inicializálása nem sikerült. Kérjük, frissítse az oldalt.');
+        });
+    </script>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+    <script type="module" src="theme.js"></script>
+</body>
+</html>
