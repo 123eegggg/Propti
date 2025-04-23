@@ -1,5 +1,6 @@
+// Import Firebase modules
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Firebase configuration
@@ -18,23 +19,12 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 document.addEventListener('DOMContentLoaded', () => {
-    const { db, collection, addDoc, query, where, orderBy, getDocs, doc, getDoc } = window.fbDb;
-    const auth = window.fbAuth;
-    const PAYMENTS_COLLECTION = 'payments';
     const userDisplayNameElement = document.getElementById('userDisplayName');
     const logoutBtn = document.getElementById('logoutBtn');
-
-    const modal = document.getElementById('transactionModal');
-    const form = document.getElementById('transactionForm');
-    const tbody = document.querySelector('.transactions-table tbody');
-
+    const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('typeFilter');
-    const propertyFilter = document.getElementById('propertyFilter');
-    const tenantFilter = document.getElementById('tenantFilter');
     const dateFilter = document.getElementById('dateFilter');
-
-    const propertySearch = document.getElementById('propertySearch');
-    const tenantSearch = document.getElementById('tenantSearch');
+    let searchTimeout;
 
     // Debounce function
     function debounce(func, wait) {
@@ -45,99 +35,38 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // Add event listener for unified search
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            applyFilters(searchTerm);
+        }, 300);
+    });
+
     // Function to apply filters
-    async function applyFilters() {
+    async function applyFilters(searchTerm = '') {
+        if (!auth.currentUser) return;
+        
         const filters = {
-            propertySearch: propertySearch.value.toLowerCase(),
-            tenantSearch: tenantSearch.value.toLowerCase(),
+            searchTerm: searchTerm,
             transactionType: typeFilter.value !== 'all' ? typeFilter.value : null,
             dateRange: dateFilter.value !== 'all' ? dateFilter.value : null
         };
         await loadTransactions(auth.currentUser.uid, filters);
     }
 
-    // Add event listeners with debouncing for search inputs
-    propertySearch.addEventListener('input', debounce(applyFilters, 300));
-    tenantSearch.addEventListener('input', debounce(applyFilters, 300));
-
     // Add event listeners for dropdown filters
-    typeFilter.addEventListener('change', applyFilters);
-    dateFilter.addEventListener('change', applyFilters);
+    typeFilter.addEventListener('change', () => applyFilters(searchInput.value.toLowerCase().trim()));
+    dateFilter.addEventListener('change', () => applyFilters(searchInput.value.toLowerCase().trim()));
 
-    // Update user display name
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            try {
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
-                if (userDoc.exists()) {
-                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
-                } else {
-                    userDisplayNameElement.textContent = user.email;
-                }
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-                userDisplayNameElement.textContent = user.email;
-            }
-            // Initialize other penzugyek.js functionality here
-            await loadTransactions(user.uid);
-        } else {
-            window.location.href = 'index.html';
-        }
-    });
+    // Helper function to check if a transaction type is an expense
+    function isExpenseType(type) {
+        const expenseTypes = ['tax', 'maintenance', 'utility', 'insurance'];
+        return expenseTypes.includes(type);
+    }
 
-    // Add logout functionality
-    logoutBtn.addEventListener('click', () => {
-        auth.signOut()
-            .then(() => window.location.href = 'index.html')
-            .catch(error => console.error('Error signing out:', error));
-    });
-
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const user = auth.currentUser;
-
-        if (!user) {
-            alert('Nincs bejelentkezett felhasználó!');
-            return;
-        }
-
-        try {
-            const formData = new FormData(form);
-            const paymentData = {
-                date: formData.get('date'),
-                type: formData.get('type'),
-                property: formData.get('property'),
-                tenant: formData.get('tenant') || null,
-                amount: parseInt(formData.get('amount')),
-                status: formData.get('status'),
-                description: formData.get('description') || '',
-                ownerId: user.uid,
-                createdAt: new Date().toISOString()
-            };
-
-            // Save to Firestore payments collection
-            const docRef = await addDoc(collection(db, PAYMENTS_COLLECTION), paymentData);
-            console.log('Payment saved with ID:', docRef.id);
-
-            // Add to table
-            addTransactionToTable(paymentData);
-
-            // Close modal and reset form
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            form.reset();
-            document.getElementById('date').valueAsDate = new Date();
-
-            alert('Tranzakció sikeresen mentve!');
-
-        } catch (error) {
-            console.error('Error saving payment:', error);
-            alert('Hiba történt a mentés során: ' + error.message);
-        }
-    });
-
-    // Update loadTransactions function to handle search filters
+    // Update loadTransactions function to handle unified search
     async function loadTransactions(userId, filters = {}) {
         try {
             const paymentsRef = collection(db, 'payments');
@@ -156,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tenantsMap.set(doc.id, doc.data().name);
             });
 
-            // Initialize statistics variables
+            // Initialize statistics
             let monthlyIncome = 0;
             let monthlyExpense = 0;
             let pendingPayments = 0;
@@ -175,14 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const paymentDate = new Date(data.date);
                 let includePayment = true;
 
-                // Apply search filters
-                if (filters.propertySearch && !data.property.toLowerCase().includes(filters.propertySearch)) {
-                    includePayment = false;
-                }
-
-                if (filters.tenantSearch) {
+                // Apply search filter
+                if (filters.searchTerm) {
+                    const propertyName = (data.property || '').toLowerCase();
                     const tenantName = (tenantsMap.get(data.tenant) || '').toLowerCase();
-                    if (!tenantName.includes(filters.tenantSearch)) {
+                    if (!propertyName.includes(filters.searchTerm) && 
+                        !tenantName.includes(filters.searchTerm)) {
                         includePayment = false;
                     }
                 }
@@ -210,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (includePayment) {
                     filteredDocs.push({ id: doc.id, data });
 
-                    // Update monthly statistics
                     if (paymentDate.getMonth() === currentMonth && 
                         paymentDate.getFullYear() === currentYear) {
                         if (isExpenseType(data.type)) {
@@ -220,14 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    // Calculate last month's expenses for percentage change
                     if (paymentDate.getMonth() === lastMonth && 
                         paymentDate.getFullYear() === lastMonthYear && 
                         isExpenseType(data.type)) {
                         lastMonthExpense += Math.abs(data.amount);
                     }
 
-                    // Update pending payments
                     if (data.status === 'pending') {
                         pendingPayments += Math.abs(data.amount);
                     }
@@ -244,67 +168,53 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredDocs.sort((a, b) => new Date(b.data.date) - new Date(a.data.date));
 
             // Display filtered results
-            filteredDocs.forEach(({ id, data }) => {
-                const tr = document.createElement('tr');
-                const isExpense = isExpenseType(data.type);
-                
-                tr.innerHTML = `
-                    <td>${new Date(data.date).toLocaleDateString('hu-HU')}</td>
-                    <td>${getTransactionTypeName(data.type)}</td>
-                    <td>${data.property}</td>
-                    <td>${tenantsMap.get(data.tenant) || '-'}</td>
-                    <td class="amount ${isExpense ? 'negative' : 'positive'}">
-                        ${data.amount.toLocaleString()} Ft
-                    </td>
-                    <td>
-                        <span class="status ${data.status}">
-                            ${data.status === 'paid' ? 'Teljesítve' : 'Függőben'}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn-edit" data-id="${id}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </td>
+            if (filteredDocs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="no-results">
+                            <i class="fas fa-search"></i>
+                            <p>Nincs találat a keresési feltételeknek megfelelően</p>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
+            } else {
+                filteredDocs.forEach(({ id, data }) => {
+                    const tr = document.createElement('tr');
+                    const isExpense = isExpenseType(data.type);
+                    
+                    tr.innerHTML = `
+                        <td>${new Date(data.date).toLocaleDateString('hu-HU')}</td>
+                        <td>${getTransactionTypeName(data.type)}</td>
+                        <td>${data.property}</td>
+                        <td>${tenantsMap.get(data.tenant) || '-'}</td>
+                        <td class="amount ${isExpense ? 'negative' : 'positive'}">
+                            ${data.amount.toLocaleString()} Ft
+                        </td>
+                        <td>
+                            <span class="status ${data.status}">
+                                ${data.status === 'paid' ? 'Teljesítve' : 'Függőben'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn-edit" data-id="${id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
 
-                // Add edit handler
-                tr.querySelector('.btn-edit').onclick = () => editPayment(id, data);
-            });
+                    // Add edit handler
+                    tr.querySelector('.btn-edit').onclick = () => editPayment(id, data);
+                });
+            }
 
-            // Update statistics display with trend percentage
+            // Update statistics
             updateStatistics(monthlyIncome, monthlyExpense, pendingPayments, expenseChangePercent);
 
         } catch (error) {
             console.error('Error loading transactions:', error);
             alert('Hiba történt az adatok betöltésekor');
         }
-    }
-
-    // Helper function to check if a transaction type is an expense
-    function isExpenseType(type) {
-        const expenseTypes = ['tax', 'maintenance', 'utility', 'insurance'];
-        return expenseTypes.includes(type);
-    }
-
-    function addTransactionToTable(id, data, tenantsMap) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${formatDate(data.date)}</td>
-            <td>${getTransactionTypeName(data.type)}</td>
-            <td>${data.property}</td>
-            <td>${tenantsMap.get(data.tenant) || '-'}</td>
-            <td class="amount ${data.amount >= 0 ? 'positive' : 'negative'}">
-                ${data.amount.toLocaleString()} Ft
-            </td>
-            <td><span class="status ${data.status}">${data.status === 'paid' ? 'Teljesítve' : 'Függőben'}</span></td>
-        `;
-        tbody.insertBefore(tr, tbody.firstChild);
-    }
-
-    function formatDate(dateString) {
-        return new Date(dateString).toLocaleDateString('hu-HU');
     }
 
     function getTransactionTypeName(type) {
@@ -319,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return types[type] || type;
     }
 
-    // Update statistics display function to include trend percentage
     function updateStatistics(income, expense, pending, expenseChangePercent) {
         document.querySelector('.stat-card:nth-child(1) .amount').textContent = 
             `${income.toLocaleString()} Ft`;
@@ -331,53 +240,33 @@ document.addEventListener('DOMContentLoaded', () => {
             `trend ${expenseChangePercent <= 0 ? 'positive' : 'negative'}`;
         document.querySelector('.stat-card:nth-child(3) .amount').textContent = 
             `${pending.toLocaleString()} Ft`;
-
-        // Update trend color based on whether expenses increased or decreased
-        const trendElement = document.querySelector('.stat-card:nth-child(2) .trend');
-        if (expenseChangePercent > 0) {
-            trendElement.classList.add('negative');
-            trendElement.classList.remove('positive');
-        } else {
-            trendElement.classList.add('positive');
-            trendElement.classList.remove('negative');
-        }
     }
 
-    // Initialize filter dropdowns with properties and tenants
+    // Authentication state observer
     onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                // Load properties for filter
-                const propertiesRef = collection(db, 'properties');
-                const propertiesQuery = query(propertiesRef, where('ownerId', '==', user.uid));
-                const propertiesSnapshot = await getDocs(propertiesQuery);
-                
-                propertiesSnapshot.forEach(doc => {
-                    const property = doc.data();
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = property.location;
-                    propertyFilter.appendChild(option);
-                });
-
-                // Load tenants for filter
-                const tenantsRef = collection(db, 'tenants');
-                const tenantsQuery = query(tenantsRef, where('ownerId', '==', user.uid));
-                const tenantsSnapshot = await getDocs(tenantsQuery);
-                
-                tenantsSnapshot.forEach(doc => {
-                    const tenant = doc.data();
-                    const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.textContent = tenant.name;
-                    tenantFilter.appendChild(option);
-                });
-
-                // Initial load with no filters
-                await loadTransactions(user.uid);
-            } catch (error) {
-                console.error('Error initializing filters:', error);
-            }
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
         }
+        
+        try {
+            const userDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', user.uid)));
+            if (!userDoc.empty) {
+                userDisplayNameElement.textContent = userDoc.docs[0].data().fullName || user.email;
+            } else {
+                userDisplayNameElement.textContent = user.email;
+            }
+            await loadTransactions(user.uid);
+        } catch (error) {
+            console.error('Error loading user data:', error);
+            userDisplayNameElement.textContent = user.email;
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
     });
 });

@@ -76,11 +76,7 @@
                     <div class="search-filters">
                         <div class="search-bar">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="propertySearch" placeholder="Ingatlan keresése...">
-                        </div>
-                        <div class="search-bar">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="tenantSearch" placeholder="Bérlő keresése...">
+                            <input type="text" id="searchInput" placeholder="Ingatlan vagy bérlő keresése...">
                         </div>
                         <select class="filter-select" id="typeFilter">
                             <option value="all">Összes tranzakció</option>
@@ -333,31 +329,7 @@
                 const paymentsRef = collection(db, 'payments');
                 let q = query(paymentsRef, where('ownerId', '==', userId));
 
-                // Add date filter
-                if (filters.dateRange) {
-                    const now = new Date();
-                    let startDate = new Date();
-                    
-                    switch (filters.dateRange) {
-                        case '1week':
-                            startDate.setDate(now.getDate() - 7);
-                            break;
-                        case '1month':
-                            startDate.setMonth(now.getMonth() - 1);
-                            break;
-                        case '3months':
-                            startDate.setMonth(now.getMonth() - 3);
-                            break;
-                        case '6months':
-                            startDate.setMonth(now.getMonth() - 6);
-                            break;
-                        case '1year':
-                            startDate.setFullYear(now.getFullYear() - 1);
-                            break;
-                    }
-                    q = query(q, where('date', '>=', startDate.toISOString().split('T')[0]));
-                }
-
+                // Get all payments first
                 const querySnapshot = await getDocs(q);
                 const tbody = document.querySelector('.transactions-table tbody');
                 tbody.innerHTML = '';
@@ -383,28 +355,56 @@
                     const data = doc.data();
                     const paymentDate = new Date(data.date);
 
-                    // Apply additional filters
+                    // Apply filters
                     let includePayment = true;
 
                     // Filter by transaction type (bevételek/kiadások)
                     if (filters.transactionType) {
-                        if (filters.transactionType === 'income' && data.amount < 0) includePayment = false;
-                        if (filters.transactionType === 'expense' && data.amount >= 0) includePayment = false;
+                        if (filters.transactionType === 'income') {
+                            includePayment = (data.type === 'rent');
+                        } else if (filters.transactionType === 'expense') {
+                            includePayment = ['maintenance', 'utility', 'tax', 'insurance', 'other'].includes(data.type);
+                        }
                     }
 
-                    // Filter by property
-                    if (filters.propertyId && data.propertyId !== filters.propertyId) includePayment = false;
-
-                    // Filter by tenant
-                    if (filters.tenantId && data.tenant !== filters.tenantId) includePayment = false;
+                    // Filter by date range
+                    if (filters.dateRange) {
+                        const now = new Date();
+                        let startDate = new Date();
+                        
+                        switch (filters.dateRange) {
+                            case '1week':
+                                startDate.setDate(now.getDate() - 7);
+                                break;
+                            case '1month':
+                                startDate.setMonth(now.getMonth() - 1);
+                                break;
+                            case '3months':
+                                startDate.setMonth(now.getMonth() - 3);
+                                break;
+                            case '6months':
+                                startDate.setMonth(now.getMonth() - 6);
+                                break;
+                            case '1year':
+                                startDate.setFullYear(now.getFullYear() - 1);
+                                break;
+                        }
+                        
+                        if (paymentDate < startDate) {
+                            includePayment = false;
+                        }
+                    }
 
                     if (includePayment) {
                         filteredDocs.push({ id: doc.id, data });
                         
-                        // Update statistics for included payments
+                        // Update statistics only for included payments
                         if (paymentDate.getMonth() === currentMonth) {
-                            if (data.amount >= 0) monthlyIncome += data.amount;
-                            else monthlyExpense += Math.abs(data.amount);
+                            if (data.type === 'rent') {
+                                monthlyIncome += data.amount;
+                            } else {
+                                monthlyExpense += Math.abs(data.amount);
+                            }
                         }
 
                         if (data.status === 'pending') {
@@ -427,8 +427,8 @@
                         <td>${getTransactionTypeName(data.type)}</td>
                         <td>${data.property}</td>
                         <td>${tenantName}</td>
-                        <td class="amount ${data.amount >= 0 ? 'positive' : 'negative'}">
-                            ${data.amount.toLocaleString()} Ft
+                        <td class="amount ${data.type === 'rent' ? 'positive' : 'negative'}">
+                            ${Math.abs(data.amount).toLocaleString()} Ft
                         </td>
                         <td>
                             <span class="status ${data.status}">
@@ -443,7 +443,7 @@
                     `;
                     tbody.appendChild(tr);
 
-                    // Add edit handler setup
+                    // Add edit handler
                     tr.querySelector('.btn-edit').onclick = () => editPayment(id, data);
                 });
 
@@ -465,7 +465,7 @@
             document.querySelector('.stat-card:nth-child(3) .amount').textContent = 
                 `${pending.toLocaleString()} Ft`;
             document.querySelector('.stat-card:nth-child(3) .count').textContent = 
-                `${docs.filter(doc => doc.data().status === 'pending').length} bérlő`;
+                `${docs.filter(doc => doc.data && doc.data.status === 'pending').length} bérlő`;
         }
 
         // Add edit payment function
@@ -579,6 +579,30 @@
             modal.onclick = (e) => {
                 if (e.target === modal) window.modalHandlers.close();
             };
+
+            // Add filters change handlers
+            document.getElementById('typeFilter').addEventListener('change', async (e) => {
+                const user = auth.currentUser;
+                if (!user) return;
+                
+                const filters = {
+                    transactionType: e.target.value === 'all' ? null : e.target.value
+                };
+                
+                await loadPayments(user.uid, filters);
+            });
+
+            document.getElementById('dateFilter').addEventListener('change', async (e) => {
+                const user = auth.currentUser;
+                if (!user) return;
+                
+                const filters = {
+                    dateRange: e.target.value === 'all' ? null : e.target.value,
+                    transactionType: document.getElementById('typeFilter').value === 'all' ? null : document.getElementById('typeFilter').value
+                };
+                
+                await loadPayments(user.uid, filters);
+            });
 
             // Form submission handler with tenant ID
             const form = document.getElementById('transactionForm');

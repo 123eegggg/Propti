@@ -323,6 +323,7 @@
 .search-bar {
     position: relative;
     flex: 1;
+    max-width: 400px;
 }
 
 .search-bar input {
@@ -369,4 +370,21 @@
     align-items: center;
     margin-bottom: 2rem;
     gap: 1rem;
+}
+
+.no-results {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray);
+}
+
+.no-results i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.no-results p {
+    font-size: 0.95rem;
+    margin: 0;
 }
