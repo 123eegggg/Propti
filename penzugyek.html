@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="penzugyek.css">
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -71,6 +72,9 @@
             <div class="transactions-container">
                 <div class="transactions-header">
                     <h2>Tranzakciók</h2>
+                    <button class="btn-secondary" id="exportExcelBtn">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
                 </div>
                 <div class="filters-container">
                     <div class="search-filters">
@@ -164,7 +168,7 @@
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn-danger" id="deleteTransaction">Törlés</button>
-                            <button type="button" class="btn-secondary modal-close">Mégse</button>
+                            <button type="button" class="btn-secondary" id="editModalClose">Mégse</button>
                             <button type="submit" class="btn-primary">Mentés</button>
                         </div>
                     </form>
@@ -358,8 +362,17 @@
                     // Apply filters
                     let includePayment = true;
 
+                    // Search filter
+                    const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+                    if (searchQuery) {
+                        const propertyMatch = data.property.toLowerCase().includes(searchQuery);
+                        const tenantName = tenantsMap.get(data.tenant) || '';
+                        const tenantMatch = tenantName.toLowerCase().includes(searchQuery);
+                        includePayment = propertyMatch || tenantMatch;
+                    }
+
                     // Filter by transaction type (bevételek/kiadások)
-                    if (filters.transactionType) {
+                    if (filters.transactionType && includePayment) {
                         if (filters.transactionType === 'income') {
                             includePayment = (data.type === 'rent');
                         } else if (filters.transactionType === 'expense') {
@@ -368,7 +381,7 @@
                     }
 
                     // Filter by date range
-                    if (filters.dateRange) {
+                    if (filters.dateRange && includePayment) {
                         const now = new Date();
                         let startDate = new Date();
                         
@@ -552,6 +565,12 @@
             }
         });
 
+        // Add close modal handler for edit modal
+        document.getElementById('editModalClose').addEventListener('click', () => {
+            document.getElementById('editTransactionModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+
         // Authentication state observer
         document.addEventListener('DOMContentLoaded', () => {
             onAuthStateChanged(auth, async (user) => {
@@ -586,7 +605,8 @@
                 if (!user) return;
                 
                 const filters = {
-                    transactionType: e.target.value === 'all' ? null : e.target.value
+                    transactionType: e.target.value === 'all' ? null : e.target.value,
+                    dateRange: document.getElementById('dateFilter').value === 'all' ? null : document.getElementById('dateFilter').value
                 };
                 
                 await loadPayments(user.uid, filters);
@@ -598,6 +618,19 @@
                 
                 const filters = {
                     dateRange: e.target.value === 'all' ? null : e.target.value,
+                    transactionType: document.getElementById('typeFilter').value === 'all' ? null : document.getElementById('typeFilter').value
+                };
+                
+                await loadPayments(user.uid, filters);
+            });
+
+            // Add search input handler
+            document.getElementById('searchInput').addEventListener('input', async (e) => {
+                const user = auth.currentUser;
+                if (!user) return;
+                
+                const filters = {
+                    dateRange: document.getElementById('dateFilter').value === 'all' ? null : document.getElementById('dateFilter').value,
                     transactionType: document.getElementById('typeFilter').value === 'all' ? null : document.getElementById('typeFilter').value
                 };
                 
@@ -645,6 +678,36 @@
                     alert('Hiba történt a mentés során');
                 }
             });
+
+            // Add Excel export functionality
+            document.getElementById('exportExcelBtn').addEventListener('click', () => {
+                // Get the table data in a more structured way
+                const rows = Array.from(document.querySelectorAll('.transactions-table tbody tr'));
+                const data = rows.map(row => ({
+                    'Dátum': row.cells[0].textContent,
+                    'Típus': row.cells[1].textContent,
+                    'Ingatlan': row.cells[2].textContent,
+                    'Bérlő': row.cells[3].textContent,
+                    'Összeg': row.cells[4].textContent.replace(' Ft', ''),
+                    'Státusz': row.cells[5].textContent.trim()
+                }));
+
+                // Create worksheet
+                const ws = XLSX.utils.json_to_sheet(data);
+                
+                // Create workbook and add the worksheet
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Tranzakciók");
+                
+                // Generate Excel file name with current date
+                const date = new Date().toISOString().split('T')[0];
+                const fileName = `tranzakciok_${date}.xlsx`;
+                
+                // Save the file
+                XLSX.writeFile(wb, fileName);
+            });
+
+            // Authentication state observer
         });
 
         // Helper function for transaction types

@@ -2,6 +2,7 @@
     display: flex;
     gap: 1rem;
     margin-bottom: 2rem;
+    align-items: center;
 }
 
 .filter-btn {
@@ -374,4 +375,115 @@
 
 .pdf-controls button:hover {
     background: #0056b3;
+}
+
+/* View Organization Dropdown Styles */
+.view-select {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: white;
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    height: fit-content;
+    margin-left: 0.5rem;
+}
+
+.view-select:hover {
+    border-color: var(--primary);
+}
+
+.view-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(0, 120, 255, 0.1);
+}
+
+.property-group {
+    margin-bottom: 2rem;
+}
+
+.property-group-header {
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.property-documents {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+    padding: 0 1rem;
+}
+
+/* Property List Styles */
+.property-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.property-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.property-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--primary);
+}
+
+.property-item h3 {
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.property-item .document-count {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.property-documents {
+    display: none;
+}
+
+.property-documents.active {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    cursor: pointer;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    background: var(--border);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

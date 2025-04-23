@@ -159,8 +159,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Load documents with optional filter
-    async function loadDocuments(filterType = 'all') {
+    // Add view organization handler
+    document.getElementById('viewOrganizer').addEventListener('change', async (e) => {
+        const viewType = e.target.value;
+        const activeFilter = document.querySelector('.filter-btn.active').textContent.split(' ')[0].toLowerCase();
+        await loadDocuments(activeFilter, viewType);
+    });
+
+    // Load documents with optional filter and view type
+    async function loadDocuments(filterType = 'all', viewType = 'all') {
         try {
             const user = window.fbAuth.auth.currentUser;
             if (!user) return;
@@ -194,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 documents : 
                 documents.filter(doc => doc.type === filterType);
 
-            // Display documents
+            // Display documents based on view type
             const documentsGrid = document.querySelector('.documents-grid');
             documentsGrid.innerHTML = '';
 
@@ -203,9 +210,71 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            filteredDocs.forEach(doc => {
-                documentsGrid.appendChild(createDocumentCard(doc, doc.id));
-            });
+            if (viewType === 'byProperty') {
+                // Group documents by property
+                const propertyGroups = {};
+                filteredDocs.forEach(doc => {
+                    const propertyName = doc.propertyLocation || 'Nincs ingatlan';
+                    if (!propertyGroups[propertyName]) {
+                        propertyGroups[propertyName] = [];
+                    }
+                    propertyGroups[propertyName].push(doc);
+                });
+
+                // Create property list view
+                const propertyList = document.createElement('div');
+                propertyList.className = 'property-list';
+
+                Object.entries(propertyGroups).forEach(([propertyName, propertyDocs]) => {
+                    const propertyItem = document.createElement('div');
+                    propertyItem.className = 'property-item';
+                    propertyItem.innerHTML = `
+                        <h3>${propertyName}</h3>
+                        <div class="document-count">${propertyDocs.length} dokumentum</div>
+                    `;
+
+                    // Create hidden documents container
+                    const docsContainer = document.createElement('div');
+                    docsContainer.className = 'property-documents';
+                    docsContainer.id = `property-${propertyName.replace(/[^a-z0-9]/gi, '-')}`;
+                    
+                    propertyDocs.forEach(doc => {
+                        docsContainer.appendChild(createDocumentCard(doc, doc.id));
+                    });
+                    
+                    documentsGrid.appendChild(docsContainer);
+
+                    // Add click handler for property item
+                    propertyItem.addEventListener('click', () => {
+                        // Hide property list
+                        propertyList.style.display = 'none';
+                        
+                        // Create and add back button
+                        const backButton = document.createElement('button');
+                        backButton.className = 'back-button';
+                        backButton.innerHTML = '<i class="fas fa-arrow-left"></i> Vissza';
+                        backButton.addEventListener('click', () => {
+                            docsContainer.classList.remove('active');
+                            propertyList.style.display = 'grid';
+                            backButton.remove();
+                        });
+                        
+                        documentsGrid.insertBefore(backButton, docsContainer);
+                        
+                        // Show documents for this property
+                        docsContainer.classList.add('active');
+                    });
+
+                    propertyList.appendChild(propertyItem);
+                });
+
+                documentsGrid.insertBefore(propertyList, documentsGrid.firstChild);
+            } else {
+                // Show all documents in a grid
+                filteredDocs.forEach(doc => {
+                    documentsGrid.appendChild(createDocumentCard(doc, doc.id));
+                });
+            }
 
         } catch (error) {
             console.error('Error loading documents:', error);
