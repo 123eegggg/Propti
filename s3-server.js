@@ -6,9 +6,23 @@ const crypto = require('crypto');
 
 const app = express();
 
-// Configure CORS with specific origin and headers
+// Configure CORS with allowed origins
+const allowedOrigins = [
+    'https://soft-sawine-34511b.netlify.app',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
+];
+
 app.use(cors({
-    origin: ['http://127.0.0.1:5500', 'http://localhost:5500'],
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) === -1) {
+            return callback(new Error('CORS not allowed'), false);
+        }
+        return callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
         'Content-Type',
