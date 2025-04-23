@@ -202,8 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="btn-icon" title="Szerkesztés" onclick="editProperty('${propertyId}')">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-icon" title="Dokumentumok"><i class="fas fa-file-alt"></i></button>
-                <button class="btn-icon" title="Több"><i class="fas fa-ellipsis-v"></i></button>
+                <button class="btn-icon" title="Dokumentumok" onclick="showPropertyDocuments('${propertyId}')">
+                    <i class="fas fa-file-alt"></i>
+                </button>
+                <button class="btn-icon" title="Törlés" onclick="deleteProperty('${propertyId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
 
@@ -305,11 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="btn-icon" title="Szerkesztés" onclick="editProperty('${property.id}')">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-icon" title="Dokumentumok">
+                <button class="btn-icon" title="Dokumentumok" onclick="showPropertyDocuments('${property.id}')">
                     <i class="fas fa-file-alt"></i>
                 </button>
-                <button class="btn-icon" title="Több">
-                    <i class="fas fa-ellipsis-v"></i>
+                <button class="btn-icon" title="Törlés" onclick="deleteProperty('${property.id}')">
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
         `;
@@ -501,4 +505,147 @@ document.addEventListener('DOMContentLoaded', () => {
             loadProperties();
         }
     });
+
+    // Document viewer modal elements
+    const documentViewerModal = document.getElementById('documentViewerModal');
+    const closeDocumentModal = document.getElementById('closeDocumentModal');
+    const documentsGrid = document.querySelector('#documentViewerModal .documents-grid');
+
+    // Close document modal handlers
+    closeDocumentModal.addEventListener('click', () => {
+        documentViewerModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    });
+
+    // Close on outside click
+    documentViewerModal.addEventListener('click', (e) => {
+        if (e.target === documentViewerModal) {
+            documentViewerModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    });
+
+    // Function to create document card
+    function createDocumentCard(doc) {
+        const card = document.createElement('div');
+        card.className = 'document-card';
+        
+        const typeIcons = {
+            contract: 'file-contract',
+            invoice: 'file-invoice',
+            other: 'file-alt'
+        };
+
+        const typeLabels = {
+            contract: 'Szerződés',
+            invoice: 'Számla',
+            other: 'Egyéb'
+        };
+
+        card.innerHTML = `
+            <div class="document-icon">
+                <i class="fas fa-${typeIcons[doc.type] || 'file-alt'}"></i>
+            </div>
+            <div class="document-info">
+                <h3>${doc.title}</h3>
+                <p class="document-meta">${new Date(doc.createdAt).toLocaleDateString('hu-HU')}</p>
+                <div>
+                    <span class="document-tag" data-type="${doc.type}">${typeLabels[doc.type] || 'Egyéb'}</span>
+                </div>
+            </div>
+            <div class="document-actions">
+                ${doc.downloadURL ? `
+                    <button class="btn-icon" onclick="window.open('${doc.downloadURL}', '_blank')" title="Megtekintés">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        return card;
+    }
+
+    // Function to show property documents
+    async function showPropertyDocuments(propertyId) {
+        try {
+            const { db, collection, query, where, getDocs } = window.fbDb;
+            const documentsRef = collection(db, 'documents');
+            const q = query(
+                documentsRef, 
+                where('propertyId', '==', propertyId),
+                where('ownerId', '==', auth.currentUser.uid)
+            );
+            
+            const querySnapshot = await getDocs(q);
+            documentsGrid.innerHTML = '';
+
+            if (querySnapshot.empty) {
+                documentsGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1; color: var(--gray);">Nincsenek dokumentumok ehhez az ingatlanhoz</p>';
+                return;
+            }
+
+            const propertyRef = window.fbDb.doc(db, 'properties', propertyId);
+            const propertySnap = await window.fbDb.getDoc(propertyRef);
+            const propertyData = propertySnap.data();
+
+            // Update modal title to include property name
+            const modalTitle = document.querySelector('#documentViewerModal .modal-header h2');
+            modalTitle.textContent = `Dokumentumok - ${propertyData.location}`;
+
+            querySnapshot.forEach((doc) => {
+                const documentData = { id: doc.id, ...doc.data() };
+                documentsGrid.appendChild(createDocumentCard(documentData));
+            });
+
+            documentViewerModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        } catch (error) {
+            console.error('Error loading documents:', error);
+            alert('Hiba történt a dokumentumok betöltése közben');
+        }
+    }
+
+    // Make showPropertyDocuments available globally
+    window.showPropertyDocuments = showPropertyDocuments;
+
+    // Add delete property function after showPropertyDocuments
+    async function deleteProperty(propertyId) {
+        if (!confirm('Biztosan törölni szeretné ezt az ingatlant?')) return;
+
+        try {
+            const propertyRef = window.fbDb.doc(db, 'properties', propertyId);
+            const propertySnap = await window.fbDb.getDoc(propertyRef);
+            
+            if (!propertySnap.exists()) {
+                throw new Error('Az ingatlan nem található!');
+            }
+
+            // Check if property has documents
+            const documentsRef = collection(db, 'documents');
+            const q = query(documentsRef, where('propertyId', '==', propertyId));
+            const docsSnap = await getDocs(q);
+            
+            if (!docsSnap.empty) {
+                throw new Error('Az ingatlan nem törölhető, mert dokumentumok vannak hozzárendelve!');
+            }
+
+            // Check if property has a tenant
+            const propertyData = propertySnap.data();
+            if (propertyData.isRented) {
+                throw new Error('Az ingatlan nem törölhető, mert jelenleg ki van adva!');
+            }
+
+            // Delete property
+            await window.fbDb.deleteDoc(propertyRef);
+            
+            // Reload properties to update the UI
+            await loadProperties();
+            alert('Ingatlan sikeresen törölve!');
+        } catch (error) {
+            console.error('Error deleting property:', error);
+            alert(error.message);
+        }
+    }
+
+    // Make deleteProperty available globally
+    window.deleteProperty = deleteProperty;
 });

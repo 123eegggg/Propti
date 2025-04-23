@@ -142,20 +142,50 @@ service cloud.firestore {
 
     // Activities collection rules
     match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                   request.resource.data.ownerId == request.auth.uid &&
+                   request.resource.data.keys().hasAll(['type', 'description', 'timestamp', 'ownerId']);
+      allow list: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+                          resource.data.ownerId == request.auth.uid;
+    }
+
+    // Events collection rules
+    match /events/{eventId} {
       allow read: if isAuthenticated() && 
                  (resource == null || resource.data.ownerId == request.auth.uid);
       
       allow create: if isAuthenticated() && 
                    request.resource.data.ownerId == request.auth.uid &&
-                   request.resource.data.keys().hasAll(['type', 'description', 'timestamp', 'ownerId']);
+                   request.resource.data.keys().hasAll([
+                     'title', 'type', 'startDate', 'endDate', 
+                     'allDay', 'ownerId', 'description'
+                   ]);
       
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && request.auth != null;
       
       allow update: if isAuthenticated() && 
                    resource.data.ownerId == request.auth.uid;
       
       allow delete: if isAuthenticated() && 
                    resource.data.ownerId == request.auth.uid;
+    }
+
+    // Collection group query rules
+    match /{path=**}/activities1/{docId} {
+      allow read: if isAuthenticated() && 
+                 (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+
+    match /{path=**}/events/{docId} {
+      allow read: if isAuthenticated() && 
+                 (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+
+    match /{path=**}/tenants/{docId} {
+      allow read: if isAuthenticated() && 
+                 (resource == null || resource.data.ownerId == request.auth.uid);
     }
 
     // Default deny all other access

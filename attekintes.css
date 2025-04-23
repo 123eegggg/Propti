@@ -1,0 +1,56 @@
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;  /* Two columns for remaining cards */
+    grid-template-rows: auto auto;    /* Removed extra row for calendar */
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-height: 200px;
+}
+
+.events-card {
+    grid-column: 2;  /* Place in wider column */
+    min-height: 200px;
+}
+
+.upcoming-events-card {
+    grid-column: 2;  /* Place in wider column */
+    min-height: 200px;
+}
+
+/* Ensure other cards take the right column */
+.stats-card, 
+.documents-card, 
+.properties-card {
+    grid-column: 1;  /* Place in first column */
+}
+
+/* Adjust other cards to maintain layout */
+.stats-card, .documents-card, .properties-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .events-card,
+    .upcoming-events-card,
+    .stats-card,
+    .documents-card,
+    .properties-card {
+        grid-column: 1;
+    }
+}

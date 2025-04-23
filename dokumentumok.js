@@ -1,4 +1,82 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Firebase references
+    const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
+    const documentsRef = collection(db, 'documents');
+
+    // Initialize user display and logout functionality
+    const { auth } = window.fbAuth;
+    const userDisplayNameElement = document.getElementById('userDisplayName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Single auth state handler that manages both user display and document loading
+    auth.onAuthStateChanged(async (user) => {
+        console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
+                } else {
+                    userDisplayNameElement.textContent = user.email;
+                }
+                await loadDocuments(); // Load documents after confirming user
+            } catch (error) {
+                console.error('Error in auth state change:', error);
+                userDisplayNameElement.textContent = user.email;
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    // Add logout functionality
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut()
+            .then(() => window.location.href = 'index.html')
+            .catch(error => console.error('Error signing out:', error));
+    });
+
+    // Define edit document function first, before it's used in event handlers
+    window.editDocument = async (documentId) => {
+        // Removed duplicate declaration of editModal
+        const editForm = document.getElementById('editDocumentForm');
+        
+        try {
+            const docRef = doc(db, 'documents', documentId);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                
+                // Load properties for select
+                await loadPropertiesForSelect('editPropertySelect');
+                
+                // Set form values
+                document.getElementById('editDocumentId').value = documentId;
+                document.getElementById('editDocumentTitle').value = data.title;
+                document.getElementById('editDocumentType').value = data.type;
+                document.getElementById('editPropertySelect').value = data.propertyId || '';
+                document.getElementById('editIsSigned').value = (data.isSigned === true).toString();
+
+                // Update file preview if exists
+                const currentFileText = document.querySelector('#editFilePreview .current-file');
+                if (data.downloadURL) {
+                    currentFileText.style.display = 'block';
+                    currentFileText.querySelector('span').textContent = 'PDF dokumentum feltöltve';
+                } else {
+                    currentFileText.style.display = 'none';
+                }
+                
+                // Show modal
+                editModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+        } catch (error) {
+            console.error('Error loading document for edit:', error);
+            alert('Hiba történt a dokumentum betöltésekor');
+        }
+    };
+
     // Get DOM elements
     const uploadBtn = document.querySelector('.upload-btn');
     const modal = document.getElementById('newDocumentModal');
@@ -6,6 +84,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelBtn = document.getElementById('cancelDocument');
     const documentForm = document.getElementById('newDocumentForm');
     const documentsGrid = document.querySelector('.documents-grid');
+
+    // Edit modal elements
+    // Removed duplicate declaration of editModal
+    // Removed duplicate declaration of cancelEditBtn
+
+    // Add edit modal close handlers
+    editCloseBtn?.addEventListener('click', closeEditModal);
+    cancelEditBtn?.addEventListener('click', closeEditModal);
+
+    // Close on outside click for edit modal
+    window.addEventListener('click', (e) => {
+        if (e.target === editModal) {
+            closeEditModal();
+        }
+    });
 
     // Open modal
     uploadBtn.addEventListener('click', async () => {
@@ -28,33 +121,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('click', (e) => {
         if (e.target === modal) {
             closeDocumentModal();
-        }
-    });
-
-    // Initialize Firebase references
-    const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
-    const documentsRef = collection(db, 'documents');
-
-    // Load documents immediately if user is authenticated
-    const currentUser = window.fbAuth.auth.currentUser;
-    if (currentUser) {
-        try {
-            await loadDocuments();
-        } catch (error) {
-            console.error('Error loading initial documents:', error);
-        }
-    }
-
-    // Ensure documents are loaded when auth state changes
-    window.fbAuth.auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            try {
-                await loadDocuments();
-            } catch (error) {
-                console.error('Error loading documents after auth:', error);
-            }
-        } else {
-            window.location.href = 'index.html'; // Redirect if not logged in
         }
     });
 
@@ -102,7 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileInput.addEventListener('change', () => updateFilePreview(fileInput, filePreview));
     editFileInput.addEventListener('change', () => updateFilePreview(editFileInput, editFilePreview));
 
-    // Handle document upload form submission
+    // Update document upload form submission
     document.getElementById('newDocumentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
@@ -111,34 +177,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
-            window.cloudinaryWidget.open();
+            const propertyId = form.querySelector('#propertySelect').value;
+            let propertyLocation = '';
+            
+            // Get property location if propertyId is selected
+            if (propertyId) {
+                const propertyRef = doc(db, 'properties', propertyId);
+                const propertySnap = await getDoc(propertyRef);
+                if (propertySnap.exists()) {
+                    propertyLocation = propertySnap.data().location;
+                }
+            }
 
-            // Wait for upload success
-            const uploadResult = await new Promise((resolve, reject) => {
-                document.addEventListener('cloudinaryUploadSuccess', (event) => {
-                    resolve(event.detail);
-                }, { once: true });
-                
-                // Add timeout for upload
-                setTimeout(() => reject(new Error('Feltöltési időtúllépés')), 60000);
-            });
-
-            // Create document in Firestore
-            const documentData = {
+            let documentData = {
                 title: form.querySelector('#documentTitle').value,
                 type: form.querySelector('#documentType').value,
-                propertyId: form.querySelector('#propertySelect').value,
+                propertyId: propertyId,
+                propertyLocation: propertyLocation,
                 isSigned: form.querySelector('#isSigned').value === 'true',
                 createdAt: new Date().toISOString(),
-                fileName: uploadResult.original_filename,
-                fileSize: uploadResult.bytes,
-                mimeType: uploadResult.resource_type + '/' + uploadResult.format,
-                cloudinaryId: uploadResult.public_id,
-                downloadURL: uploadResult.secure_url,
-                resourceType: uploadResult.resource_type,
-                ownerId: window.fbAuth.auth.currentUser.uid
+                ownerId: window.fbAuth.auth.currentUser.uid,
+                updatedAt: new Date().toISOString()
             };
 
+            // Only upload file if one is selected
+            if (form.querySelector('#documentFile').files.length > 0) {
+                window.cloudinaryWidget.open();
+
+                // Wait for upload success
+                const uploadResult = await new Promise((resolve, reject) => {
+                    document.addEventListener('cloudinaryUploadSuccess', (event) => {
+                        resolve(event.detail);
+                    }, { once: true });
+                    
+                    // Add timeout for upload
+                    setTimeout(() => reject(new Error('Feltöltési időtúllépés')), 60000);
+                });
+
+                // Add file information
+                documentData = {
+                    ...documentData,
+                    fileName: uploadResult.original_filename,
+                    fileSize: uploadResult.bytes,
+                    mimeType: uploadResult.resource_type + '/' + uploadResult.format,
+                    cloudinaryId: uploadResult.public_id,
+                    downloadURL: uploadResult.secure_url,
+                    resourceType: uploadResult.resource_type
+                };
+            }
+
+            // Add to Firestore
             const docRef = await window.fbDb.addDoc(
                 window.fbDb.collection(window.fbDb.db, 'documents'),
                 documentData
@@ -149,7 +237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             form.reset();
             await loadDocuments();
             alert('Dokumentum sikeresen feltöltve!');
-
         } catch (error) {
             console.error('Error uploading document:', error);
             alert('Hiba történt a dokumentum feltöltése közben: ' + error.message);
@@ -169,16 +256,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load documents with optional filter and view type
     async function loadDocuments(filterType = 'all', viewType = 'all') {
         try {
+            console.log('Loading documents...');
             const user = window.fbAuth.auth.currentUser;
-            if (!user) return;
+            if (!user) {
+                console.log('No user logged in');
+                return;
+            }
+            console.log('Current user:', user.uid);
 
             const q = query(documentsRef, where('ownerId', '==', user.uid));
             const querySnapshot = await getDocs(q);
             const documents = [];
+            console.log('Query snapshot size:', querySnapshot.size);
 
-            querySnapshot.forEach((doc) => {
-                documents.push({ ...doc.data(), id: doc.id });
+            // First, get all properties to map their IDs to locations
+            const propertiesRef = collection(window.fbDb.db, 'properties');
+            const propertiesQuery = query(propertiesRef, where('ownerId', '==', user.uid));
+            const propertiesSnapshot = await getDocs(propertiesQuery);
+            const propertyMap = new Map();
+            propertiesSnapshot.forEach((propertyDoc) => {
+                propertyMap.set(propertyDoc.id, propertyDoc.data().location);
             });
+
+            // Now load documents with property locations
+            for (const docSnapshot of querySnapshot.docs) {
+                const docData = docSnapshot.data();
+                // Add property location if document has a propertyId
+                if (docData.propertyId) {
+                    docData.propertyLocation = propertyMap.get(docData.propertyId) || 'Ismeretlen ingatlan';
+                }
+                documents.push({ ...docData, id: docSnapshot.id });
+                console.log('Document loaded:', { id: docSnapshot.id, ...docData });
+            }
 
             // Update filter buttons count
             const counts = {
@@ -187,6 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 invoice: documents.filter(doc => doc.type === 'invoice').length,
                 other: documents.filter(doc => doc.type === 'other').length
             };
+            console.log('Document counts:', counts);
 
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 const type = btn.textContent.split(' ')[0].toLowerCase();
@@ -206,75 +316,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             documentsGrid.innerHTML = '';
 
             if (filteredDocs.length === 0) {
+                console.log('No documents found');
                 documentsGrid.innerHTML = '<p class="no-documents">Nincsenek még dokumentumok</p>';
                 return;
             }
 
-            if (viewType === 'byProperty') {
-                // Group documents by property
-                const propertyGroups = {};
-                filteredDocs.forEach(doc => {
-                    const propertyName = doc.propertyLocation || 'Nincs ingatlan';
-                    if (!propertyGroups[propertyName]) {
-                        propertyGroups[propertyName] = [];
-                    }
-                    propertyGroups[propertyName].push(doc);
-                });
-
-                // Create property list view
-                const propertyList = document.createElement('div');
-                propertyList.className = 'property-list';
-
-                Object.entries(propertyGroups).forEach(([propertyName, propertyDocs]) => {
-                    const propertyItem = document.createElement('div');
-                    propertyItem.className = 'property-item';
-                    propertyItem.innerHTML = `
-                        <h3>${propertyName}</h3>
-                        <div class="document-count">${propertyDocs.length} dokumentum</div>
-                    `;
-
-                    // Create hidden documents container
-                    const docsContainer = document.createElement('div');
-                    docsContainer.className = 'property-documents';
-                    docsContainer.id = `property-${propertyName.replace(/[^a-z0-9]/gi, '-')}`;
-                    
-                    propertyDocs.forEach(doc => {
-                        docsContainer.appendChild(createDocumentCard(doc, doc.id));
-                    });
-                    
-                    documentsGrid.appendChild(docsContainer);
-
-                    // Add click handler for property item
-                    propertyItem.addEventListener('click', () => {
-                        // Hide property list
-                        propertyList.style.display = 'none';
-                        
-                        // Create and add back button
-                        const backButton = document.createElement('button');
-                        backButton.className = 'back-button';
-                        backButton.innerHTML = '<i class="fas fa-arrow-left"></i> Vissza';
-                        backButton.addEventListener('click', () => {
-                            docsContainer.classList.remove('active');
-                            propertyList.style.display = 'grid';
-                            backButton.remove();
-                        });
-                        
-                        documentsGrid.insertBefore(backButton, docsContainer);
-                        
-                        // Show documents for this property
-                        docsContainer.classList.add('active');
-                    });
-
-                    propertyList.appendChild(propertyItem);
-                });
-
-                documentsGrid.insertBefore(propertyList, documentsGrid.firstChild);
-            } else {
-                // Show all documents in a grid
-                filteredDocs.forEach(doc => {
-                    documentsGrid.appendChild(createDocumentCard(doc, doc.id));
-                });
-            }
+            // Show all documents in a grid
+            filteredDocs.forEach(doc => {
+                documentsGrid.appendChild(createDocumentCard(doc, doc.id));
+            });
 
         } catch (error) {
             console.error('Error loading documents:', error);
@@ -390,32 +440,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Hiba történt a PDF megjelenítése közben: ' + error.message);
         }
     }
-
-    // Make showPDF available globally
     window.showPDF = showPDF;
 
-    // Add edit document functionality
+    // --- EDIT DOCUMENT FUNCTIONALITY ---
+    // Only define window.editDocument ONCE and ensure it's correct
     window.editDocument = async (documentId) => {
         const editModal = document.getElementById('editDocumentModal');
         const editForm = document.getElementById('editDocumentForm');
-        
+        // Show the modal as a popup
+        editModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
         try {
             const docRef = doc(db, 'documents', documentId);
             const docSnap = await getDoc(docRef);
-            
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                
-                // Load properties for select
                 await loadPropertiesForSelect('editPropertySelect');
-                
-                // Set form values
                 document.getElementById('editDocumentId').value = documentId;
                 document.getElementById('editDocumentTitle').value = data.title;
                 document.getElementById('editDocumentType').value = data.type;
                 document.getElementById('editPropertySelect').value = data.propertyId || '';
-                document.getElementById('editIsSigned').value = (data.isSigned === true).toString(); // Fixed this line
-
+                document.getElementById('editIsSigned').value = (data.isSigned === true).toString();
                 // Update file preview if exists
                 const currentFileText = document.querySelector('#editFilePreview .current-file');
                 if (data.downloadURL) {
@@ -424,14 +470,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     currentFileText.style.display = 'none';
                 }
-                
-                // Show modal
-                editModal.style.display = 'block';
-                document.body.style.overflow = 'hidden';
+                // Add delete button handler inside modal
+                const deleteBtn = document.getElementById('editDeleteDocumentBtn');
+                if (deleteBtn) {
+                    deleteBtn.onclick = async () => {
+                        if (confirm('Biztosan törölni szeretné ezt a dokumentumot?')) {
+                            await window.deleteDocument(documentId);
+                            editModal.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                        }
+                    };
+                }
             }
         } catch (error) {
             console.error('Error loading document for edit:', error);
             alert('Hiba történt a dokumentum betöltésekor');
+            editModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    };
+
+    // --- DELETE DOCUMENT FUNCTIONALITY ---
+    // Ensure window.deleteDocument is defined and globally available
+    window.deleteDocument = async (documentId) => {
+        if (!confirm('Biztosan törölni szeretné ezt a dokumentumot?')) return;
+        try {
+            const docRef = window.fbDb.doc(window.fbDb.db, 'documents', documentId);
+            const docSnap = await window.fbDb.getDoc(docRef);
+            const documentData = docSnap.data();
+            if (documentData.cloudinaryId) {
+                // Delete from Cloudinary using the upload preset
+                const formData = new FormData();
+                formData.append('public_id', documentData.cloudinaryId);
+                formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+                try {
+                    const destroyResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/destroy`, {
+                        method: 'POST',
+                        body: formData,
+                        mode: 'cors',
+                        credentials: 'omit'
+                    });
+                    if (!destroyResponse.ok) {
+                        console.warn('Failed to delete from Cloudinary:', await destroyResponse.json());
+                    }
+                } catch (error) {
+                    console.warn('Error deleting from Cloudinary:', error);
+                }
+            }
+            await window.fbDb.deleteDoc(docRef);
+            await loadDocuments();
+            alert('Dokumentum sikeresen törölve!');
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            alert('Hiba történt a dokumentum törlésekor');
         }
     };
 
@@ -444,11 +535,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
-            const documentId = form.querySelector('#editDocumentId').value;
+            const propertyId = form.querySelector('#editPropertySelect').value;
+            let propertyLocation = '';
+            
+            // Get property location if propertyId is selected
+            if (propertyId) {
+                const propertyRef = doc(db, 'properties', propertyId);
+                const propertySnap = await getDoc(propertyRef);
+                if (propertySnap.exists()) {
+                    propertyLocation = propertySnap.data().location;
+                }
+            }
+
             let documentData = {
                 title: form.querySelector('#editDocumentTitle').value,
                 type: form.querySelector('#editDocumentType').value,
-                propertyId: form.querySelector('#editPropertySelect').value,
+                propertyId: propertyId,
+                propertyLocation: propertyLocation,
                 isSigned: form.querySelector('#editIsSigned').value === 'true',
                 updatedAt: new Date().toISOString()
             };
@@ -468,7 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     setTimeout(() => reject(new Error('Feltöltési időtúllépés')), 60000);
                 });
 
-                // Add new file information
+                // Add file information
                 documentData = {
                     ...documentData,
                     fileName: uploadResult.original_filename,
@@ -552,23 +655,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // Load documents when auth state changes
-    window.fbAuth.auth.onAuthStateChanged((user) => {
-        if (user) {
-            loadDocuments();
-        }
-    });
-
     // Update filter button handlers
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const filterType = btn.textContent.split(' ')[0].toLowerCase();
-            const type = filterType === 'összes' ? 'all' : 
-                        filterType === 'szerződések' ? 'contract' :
-                        filterType === 'számlák' ? 'invoice' : 'other';
-            loadDocuments(type);
+            
+            // Map Hungarian text to document types
+            const filterMap = {
+                'összes': 'all',
+                'szerződések': 'contract',
+                'számlák': 'invoice',
+                'egyéb': 'other'
+            };
+            
+            const filterType = filterMap[btn.textContent.split(' ')[0].toLowerCase()] || 'all';
+            loadDocuments(filterType);
         });
     });
 
@@ -675,34 +777,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Initialize user display and logout functionality
-    const { auth } = window.fbAuth;
-    const userDisplayNameElement = document.getElementById('userDisplayName');
-    const logoutBtn = document.getElementById('logoutBtn');
+    // Edit modal elements
+    const editModal = document.getElementById('editDocumentModal');
+    const editCloseBtn = editModal.querySelector('.close-modal');
+    const cancelEditBtn = document.getElementById('cancelEditDocument');
 
-    // Update user display name
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            try {
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
-                if (userDoc.exists()) {
-                    userDisplayNameElement.textContent = userDoc.data().fullName || user.email;
-                } else {
-                    userDisplayNameElement.textContent = user.email;
-                }
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-                userDisplayNameElement.textContent = user.email;
-            }
-        } else {
-            window.location.href = 'index.html';
+    // Close edit modal functions
+    const closeEditModal = () => {
+        editModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('editDocumentForm').reset();
+    };
+
+    // Add edit modal close handlers
+    editCloseBtn.addEventListener('click', closeEditModal);
+    cancelEditBtn.addEventListener('click', closeEditModal);
+
+    // Close on outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === editModal) {
+            closeEditModal();
         }
-    });
-
-    // Add logout functionality
-    logoutBtn.addEventListener('click', () => {
-        auth.signOut()
-            .then(() => window.location.href = 'index.html')
-            .catch(error => console.error('Error signing out:', error));
     });
 });

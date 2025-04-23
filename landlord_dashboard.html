@@ -6,15 +6,17 @@
     <title>Propti Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <link rel="stylesheet" href="dashboard.css">
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.10/index.global.min.js'></script>
 </head>
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
             <div class="logo">
                 <a href="index.html">
-                    <img src="assets/propti-logo.svg" alt="Propti Logo">
+                    <img src="propti-logo.PNG" alt="Propti Logo">
                 </a>
             </div>
             <nav class="sidebar-nav">
@@ -71,15 +73,6 @@
             </div>
 
             <div class="dashboard-grid">
-                <div class="grid-item calendar-section">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3>Naptár</h3>
-                        </div>
-                        <div id="calendar"></div>
-                    </div>
-                </div>
-
                 <div class="grid-item recent-activities">
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -98,14 +91,15 @@
                 <div class="grid-item upcoming-payments">
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h3>Közelgő Befizetések</h3>
+                            <h3>Közelgő Befizetések és Kiadások</h3>
                         </div>
                         <div class="payments-table">
                             <table class="dashboard-table">
                                 <thead>
                                     <tr>
+                                        <th>Típus</th>
                                         <th>Ingatlan</th>
-                                        <th>Bérlő</th>
+                                        <th>Név</th>
                                         <th>Összeg</th>
                                         <th>Határidő</th>
                                     </tr>
@@ -113,7 +107,7 @@
                                 <tbody>
                                     <!-- Payments will be populated dynamically -->
                                     <tr>
-                                        <td colspan="4" class="loading-state">
+                                        <td colspan="5" class="loading-state">
                                             <i class="fas fa-spinner fa-spin"></i>
                                             <p>Betöltés...</p>
                                         </td>
@@ -123,12 +117,39 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="grid-item calendar-view">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>Naptár</h3>
+                            <div class="calendar-filters">
+                                <button class="filter-btn active" data-type="all">Összes</button>
+                                <button class="filter-btn" data-type="payment">Befizetések</button>
+                                <button class="filter-btn" data-type="maintenance">Karbantartás</button>
+                                <button class="filter-btn" data-type="contract">Szerződések</button>
+                            </div>
+                        </div>
+                        <div id="calendar"></div>
+                        <div id="calendar-legend">
+                            <div class="legend-item">
+                                <span class="color-dot payment"></span>
+                                <span>Befizetések</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-dot maintenance"></span>
+                                <span>Karbantartás</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="color-dot contract"></span>
+                                <span>Szerződések</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
     <!-- Firebase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/hu.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
@@ -147,8 +168,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null; // Add this at the top level
-        let calendar = null;
+        let currentUser = null;
 
         // Enable detailed error logging
         const DEBUG = true;
@@ -313,7 +333,7 @@
 
                 // Load activities
                 const activitiesQuery = query(
-                    collection(db, 'activities'),
+                    collection(db, 'activities1'), // Change from 'activities' to 'activities1'
                     where('ownerId', '==', user.uid),
                     orderBy('timestamp', 'desc'),
                     limit(5)
@@ -346,14 +366,14 @@
                     `;
                 }
 
-                // Load upcoming payments
+                // Update payments query to include both incoming and outgoing payments
                 const paymentsQuery = query(
                     collection(db, 'payments'),
                     where('ownerId', '==', user.uid),
                     where('status', '==', 'pending'),
                     where('dueDate', '>=', new Date().toISOString()),
                     orderBy('dueDate', 'asc'),
-                    limit(5)
+                    limit(10)
                 );
 
                 const paymentsSnapshot = await getDocs(paymentsQuery);
@@ -361,14 +381,31 @@
 
                 for (const doc of paymentsSnapshot.docs) {
                     const payment = doc.data();
-                    const tenantDoc = await getDoc(doc(db, 'tenants', payment.tenantId));
-                    const tenant = tenantDoc.data();
+                    let name = '';
+                    
+                    if (payment.type === 'bevétel') {
+                        const tenantDoc = await getDoc(doc(db, 'tenants', payment.tenantId));
+                        name = tenantDoc.data()?.name || 'N/A';
+                    } else {
+                        name = payment.recipientName || 'N/A';
+                    }
 
                     const row = document.createElement('tr');
+                    row.className = payment.type === 'kiadás' ? 'expense-row' : 'income-row';
                     row.innerHTML = `
-                        <td>${payment.property}</td>
-                        <td>${tenant ? tenant.name : 'N/A'}</td>
-                        <td>${payment.amount.toLocaleString()} Ft</td>
+                        <td>
+                            <span class="payment-type ${payment.type}">
+                                ${payment.type === 'kiadás' ? 
+                                  '<i class="fas fa-arrow-up text-danger"></i>' : 
+                                  '<i class="fas fa-arrow-down text-success"></i>'}
+                                ${payment.type}
+                            </span>
+                        </td>
+                        <td>${payment.property || 'N/A'}</td>
+                        <td>${name}</td>
+                        <td class="${payment.type === 'kiadás' ? 'text-danger' : 'text-success'}">
+                            ${payment.type === 'kiadás' ? '-' : ''}${payment.amount.toLocaleString()} Ft
+                        </td>
                         <td>${new Date(payment.dueDate).toLocaleDateString('hu-HU')}</td>
                     `;
                     paymentsTable.appendChild(row);
@@ -377,9 +414,9 @@
                 if (paymentsSnapshot.empty) {
                     paymentsTable.innerHTML = `
                         <tr>
-                            <td colspan="4" class="empty-state">
+                            <td colspan="5" class="empty-state">
                                 <i class="fas fa-info-circle"></i>
-                                <p>Nincsenek közelgő befizetések</p>
+                                <p>Nincsenek közelgő tranzakciók</p>
                             </td>
                         </tr>
                     `;
@@ -433,11 +470,11 @@
             
             const activityList = document.querySelector('.activity-list');
             const collections = [
-                { name: 'tenants', icon: 'fas fa-user', type: 'Új bérlő' },
-                { name: 'properties', icon: 'fas fa-building', type: 'Új ingatlan' },
-                { name: 'payments', icon: 'fas fa-money-bill', type: 'Új kifizetés' },
-                { name: 'documents', icon: 'fas fa-file', type: 'Új dokumentum' },
-                { name: 'maintenance', icon: 'fas fa-tools', type: 'Karbantartási feladat' }
+                { name: 'tenants', icon: 'fas fa-user', type: 'Új bérlő', orderField: 'createdAt' },
+                { name: 'properties', icon: 'fas fa-building', type: 'Új ingatlan', orderField: 'createdAt' },
+                { name: 'payments', icon: 'fas fa-money-bill', type: 'Új kifizetés', orderField: 'createdAt' },
+                { name: 'documents', icon: 'fas fa-file', type: 'Új dokumentum', orderField: 'createdAt' },
+                { name: 'maintenance', icon: 'fas fa-tools', type: 'Karbantartási feladat', orderField: 'createdAt' }
             ];
 
             try {
@@ -447,7 +484,7 @@
                     const q = query(
                         collection(db, col.name),
                         where('ownerId', '==', currentUser.uid),
-                        orderBy('createdAt', 'desc'),
+                        orderBy(col.orderField, 'desc'),
                         limit(5)
                     );
 
@@ -533,81 +570,104 @@
             return new Intl.NumberFormat('hu-HU').format(amount);
         }
 
-        // Initialize calendar
-        function initializeCalendar() {
-            const calendarEl = document.getElementById('calendar');
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'hu',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,listWeek' // Removed timeGridWeek for simpler view
-                },
-                height: 400, // Fixed smaller height
-                dayMaxEvents: 2, // Limit number of events shown
-                views: {
-                    dayGridMonth: {
-                        dayMaxEvents: 2
-                    }
-                },
-                eventClick: function(info) {
-                    alert(info.event.title);
-                }
-            });
-            calendar.render();
-        }
-
-        // Load calendar events
-        async function loadCalendarEvents() {
+        async function initializeCalendar() {
+            if (!currentUser) return;
+            
             try {
-                if (!currentUser) return;
-
-                const events = [];
-
-                // Load rent payment due dates
-                const paymentsQuery = query(
-                    collection(db, 'payments'),
+                // Create a composite query for events
+                const eventsRef = collection(db, 'events');
+                const q = query(
+                    eventsRef,
                     where('ownerId', '==', currentUser.uid),
-                    where('status', '==', 'pending')
+                    orderBy('startDate', 'asc'), // Changed from 'desc' to 'asc'
+                    limit(100) // Add a reasonable limit
                 );
-                const paymentsSnapshot = await getDocs(paymentsQuery);
-                
-                paymentsSnapshot.forEach(doc => {
-                    const payment = doc.data();
-                    events.push({
-                        title: `Bérleti díj esedékes - ${payment.property}`,
-                        start: payment.dueDate,
-                        color: '#10b981', // green
-                        allDay: true
-                    });
+
+                const calendarEl = document.getElementById('calendar');
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,listWeek'
+                    },
+                    locale: 'hu',
+                    height: 450,
+                    events: async function(info, successCallback, failureCallback) {
+                        try {
+                            const snapshot = await getDocs(q);
+                            const events = snapshot.docs.map(doc => {
+                                const data = doc.data();
+                                return {
+                                    id: doc.id,
+                                    title: data.title,
+                                    start: data.startDate,
+                                    end: data.endDate,
+                                    allDay: data.allDay || false,
+                                    className: `event-${data.type}`,
+                                    extendedProps: {
+                                        type: data.type,
+                                        description: data.description
+                                    }
+                                };
+                            });
+                            successCallback(events);
+                        } catch (error) {
+                            failureCallback(error);
+                        }
+                    },
+                    eventClick: function(info) {
+                        // Show event details
+                        showEventDetails(info.event);
+                    }
                 });
 
-                // Load maintenance tasks
-                const maintenanceQuery = query(
-                    collection(db, 'maintenance'),
-                    where('ownerId', '==', currentUser.uid),
-                    where('status', '!=', 'completed')
-                );
-                const maintenanceSnapshot = await getDocs(maintenanceQuery);
+                calendar.render();
 
-                maintenanceSnapshot.forEach(doc => {
-                    const task = doc.data();
-                    events.push({
-                        title: `Karbantartás - ${task.title}`,
-                        start: task.scheduledDate || task.createdAt,
-                        color: task.priority === 'urgent' ? '#ef4444' : '#f59e0b',
-                        allDay: true
+                // Initialize filters
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        const type = e.target.dataset.type;
+                        
+                        if (type === 'all') {
+                            calendar.getEvents().forEach(event => event.show());
+                        } else {
+                            calendar.getEvents().forEach(event => {
+                                if (event.extendedProps.type === type) {
+                                    event.show();
+                                } else {
+                                    event.hide();
+                                }
+                            });
+                        }
                     });
                 });
-
-                // Clear existing events and add new ones
-                calendar.removeAllEvents();
-                calendar.addEventSource(events);
 
             } catch (error) {
-                console.error('Error loading calendar events:', error);
+                console.error('Error initializing calendar:', error);
+                document.getElementById('calendar').innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>A naptár betöltése sikertelen</p>
+                        <button onclick="initializeCalendar()" class="retry-btn">
+                            <i class="fas fa-redo"></i> Újrapróbálkozás
+                        </button>
+                    </div>
+                `;
             }
+        }
+
+        function showEventDetails(event) {
+            // Implement event details popup
+            const details = event.extendedProps;
+            alert(`
+                ${event.title}
+                Típus: ${details.type}
+                ${details.description || ''}
+                Időpont: ${event.start.toLocaleDateString('hu-HU')}
+            `);
         }
 
         // Initialize authentication listener
@@ -617,15 +677,12 @@
                 document.getElementById('userDisplayName').textContent = 
                     user.displayName || user.email || 'Felhasználó';
                 
-                // Initialize calendar after authentication
-                initializeCalendar();
-                
                 // Load all dashboard data
                 await Promise.all([
                     loadDashboardStats(),
                     loadDashboardData(),
                     loadRecentActivities(),
-                    loadCalendarEvents()
+                    initializeCalendar() // Add this line
                 ]);
             } else {
                 window.location.href = 'index.html';

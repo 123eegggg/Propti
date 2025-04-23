@@ -34,7 +34,7 @@
         <aside class="sidebar">
             <div class="logo">
                 <a href="index.html">
-                    <img src="assets/propti-logo.svg" alt="Propti Logo">
+                    <img src="propti-logo.PNG" alt="Propti Logo">
                 </a>
             </div>
             <nav class="sidebar-nav">
@@ -121,12 +121,12 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="documentFile">PDF dokumentum</label>
+                            <label for="documentFile">PDF dokumentum (opcionális)</label>
                             <div class="file-upload-area">
                                 <input type="file" id="documentFile" name="file" accept=".pdf">
                                 <div id="filePreview">
                                     <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Kattintson vagy húzza ide a PDF fájlt</p>
+                                    <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
                                 </div>
                             </div>
                         </div>
@@ -174,12 +174,12 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="editDocumentFile">PDF dokumentum</label>
+                            <label for="editDocumentFile">PDF dokumentum (opcionális)</label>
                             <div class="file-upload-area">
                                 <input type="file" id="editDocumentFile" name="file" accept=".pdf">
                                 <div id="editFilePreview">
                                     <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Kattintson vagy húzza ide a PDF fájlt</p>
+                                    <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
                                     <p class="current-file" style="display:none">Jelenlegi fájl: <span></span></p>
                                 </div>
                             </div>
@@ -229,31 +229,53 @@
         } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, uploadBytes, getDownloadURL } 
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { firebaseConfig } from './config.js';
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
-        const auth = getAuth(app);
+        // Initialize Firebase with retries
+        const initializeFirebase = async (retryCount = 0) => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const storage = getStorage(app);
+                const auth = getAuth(app);
 
-        // Make Firebase services available globally
-        window.fbDb = { 
-            db, 
-            collection, 
-            addDoc, 
-            query, 
-            where, 
-            getDocs, 
-            doc, 
-            deleteDoc,
-            getDoc,
-            updateDoc
+                // Make Firebase services available globally
+                window.fbDb = { 
+                    db, 
+                    collection, 
+                    addDoc, 
+                    query, 
+                    where, 
+                    getDocs, 
+                    doc, 
+                    deleteDoc,
+                    getDoc,
+                    updateDoc
+                };
+                window.fbStorage = { storage, ref, uploadBytes, getDownloadURL };
+                window.fbAuth = { auth, onAuthStateChanged };
+
+                console.log('Firebase services initialized successfully');
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                if (retryCount < 3) {
+                    console.log(`Retrying initialization (attempt ${retryCount + 1})`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                    await initializeFirebase(retryCount + 1);
+                } else {
+                    throw new Error('Failed to initialize Firebase after multiple attempts');
+                }
+            }
         };
-        window.fbStorage = { storage, ref, uploadBytes, getDownloadURL };
-        window.fbAuth = { auth };
+
+        // Start initialization
+        initializeFirebase().catch(error => {
+            console.error('Fatal: Firebase initialization failed:', error);
+            alert('A rendszer inicializálása nem sikerült. Kérjük, frissítse az oldalt.');
+        });
     </script>
+
     <!-- Initialize Cloudinary -->
     <script type="module">
         import { cloudinaryConfig } from './config.js';
@@ -263,8 +285,8 @@
         // Initialize the upload widget configuration
         window.cloudinaryWidget = cloudinary.createUploadWidget({
             cloudName: cloudinaryConfig.cloudName,
-            uploadPreset: 'propti_documents',
-            folder: 'documents',
+            uploadPreset: cloudinaryConfig.uploadPreset,
+            folder: cloudinaryConfig.folder,
             sources: ['local', 'url'],
             maxFiles: 1,
             clientAllowedFormats: ['pdf', 'png', 'jpg', 'jpeg'],
@@ -291,10 +313,9 @@
             }
         }, (error, result) => {
             if (!error && result && result.event === "success") {
-                console.log('Upload successful:', result.info);
-                window.lastUploadResult = result.info;
-                document.dispatchEvent(new CustomEvent('cloudinaryUploadSuccess', { 
-                    detail: result.info 
+                // Dispatch custom event with upload details
+                document.dispatchEvent(new CustomEvent('cloudinaryUploadSuccess', {
+                    detail: result.info
                 }));
             }
         });

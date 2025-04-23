@@ -135,7 +135,7 @@
     border-radius: 0 0 1rem 1rem;
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 0.25rem;
 }
 
 .btn-icon {
@@ -151,6 +151,16 @@
 .btn-icon:hover {
     color: var(--primary);
     border-color: var(--primary);
+}
+
+.btn-icon[title="Törlés"] {
+    color: var(--gray);
+}
+
+.btn-icon[title="Törlés"]:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
 }
 
 .new-tenant-btn {
@@ -346,7 +356,7 @@
     background: white;
     border-radius: 1rem;
     padding: 2rem;
-    max-width: 600px;
+    max-width: 800px; /* Make document viewer wider */
     width: 90%;
     margin: 2rem auto;
     position: relative;
@@ -373,10 +383,24 @@
     cursor: pointer;
     color: var(--gray);
     transition: color 0.2s ease;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: var(--light-gray);
+    color: var(--gray);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    transition: all 0.2s ease;
 }
 
 .close-modal:hover {
     color: var(--text);
+    background: var(--primary);
+    color: white;
+    transform: rotate(90deg);
 }
 
 .no-properties {
@@ -392,4 +416,98 @@
     --primary-green: #4CAF50;
     --secondary-green: #81C784;
     --light-green: #E8F5E9;
+}
+
+/* Document Modal Styles */
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.document-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.document-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.document-icon {
+    font-size: 2rem;
+    color: var(--primary);
+    width: 48px;
+    text-align: center;
+}
+
+.document-info {
+    flex: 1;
+}
+
+.document-info h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.document-meta {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.document-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--light-blue);
+    color: var(--primary);
+    border-radius: 1rem;
+    font-size: 0.8rem;
+}
+
+.document-tag[data-type="contract"] {
+    background: var(--light-green);
+    color: var(--success);
+}
+
+.document-tag[data-type="invoice"] {
+    background: var(--light-yellow);
+    color: var(--warning);
+}
+
+.document-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon[title="Megtekintés"] {
+    background: var(--light-blue);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-icon[title="Megtekintés"]:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Document viewer empty state */
+.documents-grid:empty::after {
+    content: 'Nincsenek dokumentumok ehhez az ingatlanhoz';
+    display: block;
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray);
+    grid-column: 1/-1;
 }
