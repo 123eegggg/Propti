@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self' https://*.cloudinary.com https://*.googleapis.com https://firestore.googleapis.com;
-        img-src 'self' data: blob: https://*.cloudinary.com;
-        script-src 'self' 'unsafe-inline' https://*.cloudinary.com https://*.googleapis.com https://upload-widget.cloudinary.com https://cdnjs.cloudflare.com https://www.gstatic.com;
+        default-src 'self' https://*.googleapis.com https://firestore.googleapis.com http://localhost:3000;
+        img-src 'self' data: blob: https://*.amazonaws.com;
+        script-src 'self' 'unsafe-inline' https://*.googleapis.com https://cdnjs.cloudflare.com https://www.gstatic.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
-        media-src 'self' blob: https://*.cloudinary.com;
-        connect-src 'self' https://*.cloudinary.com https://*.googleapis.com https://firestore.googleapis.com https://www.googleapis.com;
-        frame-src 'self' https://*.cloudinary.com">
+        media-src 'self' blob:;
+        connect-src 'self' https://*.googleapis.com https://firestore.googleapis.com https://www.googleapis.com http://localhost:3000 https://*.amazonaws.com">
     <title>Propti - Dokumentumok Kezelése</title>
     
     <!-- Stylesheets -->
@@ -25,9 +24,6 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
-
-    <!-- Cloudinary SDK -->
-    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -63,10 +59,6 @@
         <main class="main-content">
             <header class="dashboard-header">
                 <h1>Dokumentumok</h1>
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Dokumentum keresése...">
-                </div>
                 <div class="header-actions">
                     <button class="upload-btn">
                         <i class="fas fa-cloud-upload-alt"></i>
@@ -76,10 +68,10 @@
             </header>
 
             <div class="documents-filters">
-                <button class="filter-btn active">Összes (0)</button>
-                <button class="filter-btn">Szerződések (0)</button>
-                <button class="filter-btn">Számlák (0)</button>
-                <button class="filter-btn">Egyéb (0)</button>
+                <button class="filter-btn active" data-filter="all">Összes (0)</button>
+                <button class="filter-btn" data-filter="contract">Szerződések (0)</button>
+                <button class="filter-btn" data-filter="invoice">Számlák (0)</button>
+                <button class="filter-btn" data-filter="other">Egyéb (0)</button>
             </div>
 
             <div class="documents-grid">
@@ -143,7 +135,6 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2>Dokumentum Szerkesztése</h2>
-                        <button class="close-modal">&times;</button>
                     </div>
                     <form id="editDocumentForm">
                         <input type="hidden" id="editDocumentId" name="documentId">
@@ -273,51 +264,6 @@
         initializeFirebase().catch(error => {
             console.error('Fatal: Firebase initialization failed:', error);
             alert('A rendszer inicializálása nem sikerült. Kérjük, frissítse az oldalt.');
-        });
-    </script>
-
-    <!-- Initialize Cloudinary -->
-    <script type="module">
-        import { cloudinaryConfig } from './config.js';
-        
-        window.cloudinaryConfig = cloudinaryConfig;
-
-        // Initialize the upload widget configuration
-        window.cloudinaryWidget = cloudinary.createUploadWidget({
-            cloudName: cloudinaryConfig.cloudName,
-            uploadPreset: cloudinaryConfig.uploadPreset,
-            folder: cloudinaryConfig.folder,
-            sources: ['local', 'url'],
-            maxFiles: 1,
-            clientAllowedFormats: ['pdf', 'png', 'jpg', 'jpeg'],
-            showAdvancedOptions: false,
-            cropping: false,
-            multiple: false,
-            defaultSource: 'local',
-            styles: {
-                palette: {
-                    window: "#FFFFFF",
-                    windowBorder: "#90A0B3",
-                    tabIcon: "#0078FF",
-                    menuIcons: "#5A616A",
-                    textDark: "#000000",
-                    textLight: "#FFFFFF",
-                    link: "#0078FF",
-                    action: "#FF620C",
-                    inactiveTabIcon: "#0E2F5A",
-                    error: "#F44235",
-                    inProgress: "#0078FF",
-                    complete: "#20B832",
-                    sourceBg: "#E4EBF1"
-                }
-            }
-        }, (error, result) => {
-            if (!error && result && result.event === "success") {
-                // Dispatch custom event with upload details
-                document.dispatchEvent(new CustomEvent('cloudinaryUploadSuccess', {
-                    detail: result.info
-                }));
-            }
         });
     </script>
     <script src="dokumentumok.js"></script>

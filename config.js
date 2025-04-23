@@ -7,10 +7,3 @@ export const firebaseConfig = {
     messagingSenderId: "223311863074",
     appId: "1:223311863074:web:2783282939934089d1197b"
 };
-
-// Cloudinary public config
-export const cloudinaryConfig = {
-    cloudName: 'dzacqmusj',
-    uploadPreset: 'propti_documents', // Using unsigned upload preset
-    folder: 'documents' // Store uploads in a specific folder
-};

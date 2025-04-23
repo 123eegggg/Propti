@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { db, collection, query, where, getDocs } = window.fbDb;
             const tenantsRef = collection(db, 'tenants');
-            const q = query(tenantsRef, where('ownerId', '==', currentUser.uid));
+            let q = query(tenantsRef, where('ownerId', '==', currentUser.uid));
             const querySnapshot = await getDocs(q);
 
             // Clear existing tenants
@@ -67,11 +67,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            let tenants = [];
             querySnapshot.forEach((doc) => {
-                const tenant = { id: doc.id, ...doc.data() };
+                tenants.push({ id: doc.id, ...doc.data() });
+            });
+
+            tenants.forEach(tenant => {
                 const tenantCard = createTenantCard(tenant);
                 tenantsGrid.appendChild(tenantCard);
             });
+
         } catch (error) {
             console.error('Error loading tenants:', error);
         }

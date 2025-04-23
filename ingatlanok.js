@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Display filtered properties
-    function displayProperties(filter) {
+    function displayProperties(filter, searchTerm = '') {
         propertiesGrid.innerHTML = ''; // Clear existing properties
         
         let filteredProperties = properties;
@@ -261,6 +261,14 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredProperties = properties.filter(p => p.isRented);
         } else if (filter === 'vacant') {
             filteredProperties = properties.filter(p => !p.isRented);
+        }
+
+        if (searchTerm) {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            filteredProperties = filteredProperties.filter(p =>
+                p.location.toLowerCase().includes(lowerSearchTerm) ||
+                (p.tenant && p.tenant.toLowerCase().includes(lowerSearchTerm))
+            );
         }
 
         if (filteredProperties.length === 0) {
@@ -272,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const propertyCard = createPropertyCard(property);
             propertiesGrid.appendChild(propertyCard);
         });
+        updatePropertyCounts();
     }
 
     // Create property card
@@ -495,8 +504,18 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', () => {
             filterButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            displayProperties(button.getAttribute('data-filter'));
+            const searchTerm = document.querySelector('.search-bar input').value.trim();
+            displayProperties(button.getAttribute('data-filter'), searchTerm);
         });
+    });
+
+    // Add search functionality
+    const searchInput = document.querySelector('.search-bar input');
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim();
+        const activeFilter = document.querySelector('.properties-filters .filter-btn.active');
+        const filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+        displayProperties(filter, searchTerm);
     });
 
     // Load properties when auth state changes

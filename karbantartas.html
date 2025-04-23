@@ -80,7 +80,6 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Új Karbantartási Feladat</h2>
-                <button class="close-modal">&times;</button>
             </div>
             <form id="maintenance-form">
                 <div class="form-group">
@@ -145,7 +144,6 @@
         <div class="modal">
             <div class="modal-header">
                 <h2>Feladat Szerkesztése</h2>
-                <button class="close-modal">&times;</button>
             </div>
             <form id="edit-maintenance-form">
                 <input type="hidden" id="editTaskId">
@@ -271,7 +269,7 @@
                 ${task.paymentId ? `
                     <div class="task-payment">
                         <i class="fas fa-money-bill"></i>
-                        <span>Kifizetés csatolva</span>
+                        <span>Kifizetés csatolva ${task.paymentDeadline ? `(Határidő: ${new Date(task.paymentDeadline).toLocaleDateString('hu-HU')})` : ''}</span>
                     </div>
                 ` : ''}
                 <div class="task-meta">
@@ -337,9 +335,10 @@
 
                 querySnapshot.forEach((doc) => {
                     const payment = doc.data();
+                    const deadline = payment.deadline ? new Date(payment.deadline).toLocaleDateString('hu-HU') : 'Nincs határidő';
                     const option = document.createElement('option');
                     option.value = doc.id;
-                    option.textContent = `${payment.property} - ${payment.amount.toLocaleString()} Ft (${new Date(payment.date).toLocaleDateString('hu-HU')})`;
+                    option.textContent = `${payment.property} - ${payment.amount.toLocaleString()} Ft (Határidő: ${deadline})`;
                     paymentSelect.appendChild(option);
                 });
             } catch (error) {
@@ -404,7 +403,7 @@
                     const propertyData = propertySnap.data();
 
                     const taskRef = doc(db, 'maintenance', taskId);
-                    await updateDoc(taskRef, {
+                    const formData = {
                         title: document.getElementById('editTitle').value,
                         propertyId: propertyId,
                         propertyName: propertyData.location,
@@ -414,7 +413,16 @@
                         paymentId: document.getElementById('editPayment').value || null,
                         taskDate: document.getElementById('editTaskDate').value,
                         updatedAt: new Date().toISOString()
-                    });
+                    };
+
+                    if (formData.paymentId) {
+                        const paymentDoc = await getDoc(doc(db, 'payments', formData.paymentId));
+                        if (paymentDoc.exists()) {
+                            formData.paymentDeadline = paymentDoc.data().deadline;
+                        }
+                    }
+
+                    await updateDoc(taskRef, formData);
 
                     document.getElementById('editModal').classList.remove('active');
                     document.body.style.overflow = 'auto';
@@ -542,7 +550,7 @@
 
             // Event listeners
             newTaskBtn.addEventListener('click', openModal);
-            closeModalBtn.addEventListener('click', closeModal);
+            //closeModalBtn.addEventListener('click', closeModal); // Remove this line
             cancelBtn.addEventListener('click', closeModal);
             modalBackdrop.addEventListener('click', (e) => {
                 if (e.target === modalBackdrop) closeModal();
@@ -587,6 +595,13 @@
                         ownerId: currentUser.uid,
                         images: []
                     };
+
+                    if (formData.paymentId) {
+                        const paymentDoc = await getDoc(doc(db, 'payments', formData.paymentId));
+                        if (paymentDoc.exists()) {
+                            formData.paymentDeadline = paymentDoc.data().deadline;
+                        }
+                    }
 
                     // Handle file uploads
                     const files = document.getElementById('images').files;
