@@ -515,3 +515,31 @@
     }
 }
 
+.uploadcare--widget {
+    width: 100%;
+    min-height: 200px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.uploadcare--widget:hover {
+    border-color: #007bff;
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.uploadcare--widget__button {
+    background: #007bff !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 4px !important;
+    font-weight: 500 !important;
+}
+
+.uploadcare--widget__button:hover {
+    background: #0056b3 !important;
+}
+

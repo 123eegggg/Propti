@@ -1,6 +1,22 @@
 // PDF.js configuration
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// Initialize UploadCare widget with secure configuration
+const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]', {
+    publicKey: '3ab83f53d7004ed0b77f', // This will be replaced with backend call
+    tabs: 'file',
+    multiple: false,
+    inputAcceptTypes: '.pdf',
+    preferredTypes: ['application/pdf'],
+    validators: [
+        function pdfValidator(fileInfo) {
+            if (fileInfo.name && !fileInfo.name.toLowerCase().endsWith('.pdf')) {
+                throw new Error('Csak PDF fájlok feltöltése engedélyezett');
+            }
+        }
+    ]
+});
+
 // Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Document loaded, initializing...');
@@ -23,52 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageNumPending: null,
         scale: 1.5
     };
-
-    // Initialize Cloudinary widget with PDF-specific configuration
-    const cloudinaryWidget = cloudinary.createUploadWidget(
-        {
-            cloudName: 'dzacqmusj',
-            uploadPreset: 'propti_documents',
-            sources: ['local'],
-            multiple: false,
-            maxFiles: 1,
-            folder: 'documents',
-            clientAllowedFormats: ['pdf'],
-            maxFileSize: 10000000,
-            showAdvancedOptions: false,
-            showUploadMoreButton: false,
-            params: {
-                resource_type: "raw",
-                format: "pdf",
-                type: "upload"
-            }
-        },
-        (error, result) => {
-            console.log('Cloudinary callback:', result);
-            
-            if (error) {
-                console.error('Cloudinary Upload Error:', error);
-                alert('Hiba történt a fájl feltöltése közben: ' + (error.message || 'Ismeretlen hiba'));
-                return;
-            }
-            
-            if (result?.event === 'success') {
-                const fileInput = document.querySelector('#documentFile');
-                if (fileInput) {
-                    fileInput.dataset.cloudinaryUrl = result.info.url;
-                    fileInput.dataset.fileName = result.info.original_filename;
-                    
-                    const preview = document.querySelector('#filePreview');
-                    if (preview) {
-                        preview.innerHTML = `
-                            <i class="fas fa-file-pdf"></i>
-                            <p>${result.info.original_filename}</p>
-                        `;
-                    }
-                }
-            }
-        }
-    );
 
     // Get DOM elements
     const elements = {
@@ -261,11 +231,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.editFileInput.addEventListener('change', () => updateFilePreview(elements.editFileInput, elements.editFilePreview));
     }
 
-    // Replace file input click with Cloudinary widget
+    // Replace file input click with UploadCare widget
     elements.fileInput?.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Opening Cloudinary widget');
-        cloudinaryWidget.open();
+        console.log('Opening UploadCare widget');
+        uploadWidget.openDialog();
     });
 
     // Property management
@@ -425,15 +395,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const formData = new FormData(e.target);
-            const fileInput = e.target.querySelector('#documentFile');
+            const fileInput = document.querySelector('[role=uploadcare-uploader]');
+            const fileInfo = uploadWidget.value();
             
             console.log('Form data:', {
                 title: formData.get('documentTitle'),
                 type: formData.get('documentType'),
-                cloudinaryUrl: fileInput.dataset.cloudinaryUrl
+                uploadcareUrl: fileInfo.cdnUrl
             });
 
-            if (!fileInput.dataset.cloudinaryUrl) {
+            if (!fileInfo) {
                 console.log('No file uploaded, showing alert');
                 alert('Kérem, töltsön fel egy PDF dokumentumot!');
                 submitBtn.disabled = false;
@@ -447,9 +418,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 type: formData.get('documentType'),
                 ownerId: user.uid,
                 createdAt: new Date().toISOString(),
-                downloadURL: fileInput.dataset.cloudinaryUrl,
-                fileName: fileInput.dataset.fileName || 'document.pdf',
-                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
+                downloadURL: fileInfo.cdnUrl,
+                fileName: fileInfo.name || 'document.pdf',
+                uploadcareUuid: fileInfo.uuid
             };
 
             console.log('Saving document:', documentData);
@@ -641,4 +612,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('Hiba történt a dokumentum törlésekor: ' + error.message);
         }
     };
+
+    // File preview functionality
+    uploadWidget.onChange(function(file) {
+        if (file) {
+            const preview = document.querySelector('#filePreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <i class="fas fa-file-pdf"></i>
+                    <p>${file.name || 'PDF dokumentum'}</p>
+                `;
+            }
+        }
+    });
 });
