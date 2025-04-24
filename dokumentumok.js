@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         scale: 1.5
     };
 
-    // Initialize Cloudinary widget with proper PDF handling
+    // Initialize Cloudinary widget with PDF-specific configuration
     const cloudinaryWidget = cloudinary.createUploadWidget(
         {
             cloudName: 'dzacqmusj',
@@ -32,36 +32,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             sources: ['local'],
             multiple: false,
             maxFiles: 1,
-            resourceType: 'auto',  // Changed from 'raw' to 'auto' to let Cloudinary detect file type
-            folder: 'documents',
-            clientAllowedFormats: ['pdf'],
-            maxFileSize: 20000000,
+            resourceType: 'raw',  // Matches format:Raw in preset
+            folder: 'documents',  // Matches asset folder setting
+            clientAllowedFormats: ['pdf'],  // Matches allowed formats setting
+            maxFileSize: 10000000, // 10MB limit
+            useFilename: true,  // Matches use filename setting
+            uniqueFilename: true,  // Matches unique filename setting
             showAdvancedOptions: false,
             showUploadMoreButton: false,
-            styles: {
-                palette: {
-                    window: "#FFFFFF",
-                    windowBorder: "#90A0B3",
-                    tabIcon: "#0078FF",
-                    menuIcons: "#5A616A",
-                    textDark: "#000000",
-                    textLight: "#FFFFFF",
-                    link: "#0078FF",
-                    action: "#FF620C",
-                    inactiveTabIcon: "#0E2F5A",
-                    error: "#F44235",
-                    inProgress: "#0078FF",
-                    complete: "#20B832",
-                    sourceBg: "#E4EBF1"
-                }
-            }
+            // Additional settings to match preset
+            prependPath: false,  // Matches use asset folder as public id prefix:false
+            publicId: null,  // Let Cloudinary generate unique IDs
+            overwrite: false  // Matches overwrite setting
         },
         (error, result) => {
-            console.log('Cloudinary callback triggered:', result);
+            console.log('Cloudinary callback:', result);
             
             if (error) {
                 console.error('Cloudinary Upload Error:', error);
-                alert('Hiba történt a fájl feltöltése közben: ' + error.message);
+                alert('Hiba történt a fájl feltöltése közben: ' + (error.message || 'Ismeretlen hiba'));
                 return;
             }
             
@@ -69,7 +58,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
-                    fileInput.dataset.cloudinaryUrl = result.info.secure_url;
+                    // For raw files, use url instead of secure_url
+                    fileInput.dataset.cloudinaryUrl = result.info.url;
                     fileInput.dataset.fileName = result.info.original_filename;
                     fileInput.dataset.cloudinaryPublicId = result.info.public_id;
                     
