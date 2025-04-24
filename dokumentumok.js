@@ -207,16 +207,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.showPDF = showPDF;
 
     // File upload functionality
-    function updateFilePreview(input, preview) {
-        if (!input || !preview) return;
-        const file = input.files[0];
+    uploadWidget.onChange(function(file) {
         if (file) {
-            const previewText = preview.querySelector('p');
-            const icon = preview.querySelector('i');
-            if (icon) icon.className = 'fas fa-file-pdf';
-            if (previewText) previewText.textContent = file.name;
+            if (file.size > 10 * 1024 * 1024) {
+                alert('A fájl mérete nem lehet nagyobb 10MB-nál');
+                uploadWidget.value(null);
+                return;
+            }
+            if (file.mimeType && !file.mimeType.startsWith('application/pdf')) {
+                alert('Csak PDF fájlok feltöltése engedélyezett');
+                uploadWidget.value(null);
+                return;
+            }
+            
+            const preview = document.querySelector('#filePreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <i class="fas fa-file-pdf"></i>
+                    <p>${file.name || 'PDF dokumentum'}</p>
+                `;
+            }
         }
-    }
+    });
 
     // Add file preview event listeners
     if (elements.fileInput && elements.filePreview) {
@@ -599,18 +611,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // File preview functionality for both widgets
-    uploadWidget.onChange(function(file) {
-        if (file) {
-            const preview = document.querySelector('#filePreview');
-            if (preview) {
-                preview.innerHTML = `
-                    <i class="fas fa-file-pdf"></i>
-                    <p>${file.name || 'PDF dokumentum'}</p>
-                `;
-            }
-        }
-    });
-
     editUploadWidget.onChange(function(file) {
         if (file) {
             const preview = document.querySelector('#editFilePreview');
@@ -713,13 +713,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Initialize UploadCare widgets
-    const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]');
-    const editUploadWidget = uploadcare.Widget('#editDocumentUploader');
-
-    uploadWidget.value(null);
-    editUploadWidget.value(null);
-
     // Configure widgets
     [uploadWidget, editUploadWidget].forEach(widget => {
         widget.validators.push(function(fileInfo) {
@@ -733,37 +726,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    uploadWidget.onUploadStart(function(file) {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Feltöltés...';
+        }
+    });
+
+    uploadWidget.onUploadComplete(function(info) {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Mentés';
+        }
+    });
+
     async function deleteDocument(documentId) {
         try {
-            // Get the document data first to get the UploadCare UUID
             const docRef = doc(db, 'documents', documentId);
             const docSnap = await getDoc(docRef);
             
             if (docSnap.exists()) {
-                const documentData = docSnap.data();
-                
                 // Delete from Firestore first
                 await deleteDoc(docRef);
                 
-                // If there's an UploadCare file, delete it from their storage
-                if (documentData.uploadcareUuid) {
-                    try {
-                        const response = await fetch(`https://api.uploadcare.com/files/${documentData.uploadcareUuid}/`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': `Uploadcare.Simple ${UPLOADCARE_PUBLIC_KEY}:${UPLOADCARE_SECRET_KEY}`,
-                                'Accept': 'application/vnd.uploadcare-v0.5+json'
-                            }
-                        });
-                        
-                        if (!response.ok) {
-                            console.warn('Failed to delete file from UploadCare:', response.statusText);
-                        }
-                    } catch (uploadcareError) {
-                        console.warn('Error deleting from UploadCare:', uploadcareError);
-                        // Continue execution even if UploadCare deletion fails
-                    }
-                }
+                // Note: Uploadcare handles file cleanup automatically
+                // No need to manually delete files
                 
                 await loadDocuments();
                 alert('Dokumentum sikeresen törölve!');
