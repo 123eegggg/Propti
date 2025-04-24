@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         scale: 1.5
     };
 
-    // Initialize Cloudinary widget with minimal configuration
+    // Initialize Cloudinary widget with correct PDF configuration
     const cloudinaryWidget = cloudinary.createUploadWidget(
         {
             cloudName: 'dzacqmusj',
@@ -32,13 +32,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             sources: ['local'],
             multiple: false,
             maxFiles: 1,
+            resourceType: 'raw',  // This ensures files are treated as raw files, not images
             folder: 'documents',
-            resourceType: 'raw',
-            acceptedFiles: 'application/pdf',
-            clientAllowedFormats: ['pdf']
+            clientAllowedFormats: ['pdf'],
+            maxFileSize: 20000000,
+            showAdvancedOptions: false,
+            showUploadMoreButton: false
         },
         (error, result) => {
-            console.log('Cloudinary callback:', { event: result?.event, info: result?.info });
+            console.log('Cloudinary callback:', result);
             
             if (error) {
                 console.error('Cloudinary Upload Error:', error);
@@ -46,11 +48,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            if (result?.event === 'success' && result?.info) {
+            if (result?.event === 'success') {
                 console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
-                    fileInput.dataset.cloudinaryUrl = result.info.secure_url;
+                    // Use url instead of secure_url for raw files
+                    fileInput.dataset.cloudinaryUrl = result.info.url;
                     fileInput.dataset.fileName = result.info.original_filename;
                     
                     const preview = document.querySelector('#filePreview');
@@ -443,7 +446,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ownerId: user.uid,
                 createdAt: new Date().toISOString(),
                 downloadURL: fileInput.dataset.cloudinaryUrl,
-                fileName: fileInput.dataset.fileName || 'document.pdf'
+                fileName: fileInput.dataset.fileName || 'document.pdf',
+                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
             };
 
             console.log('Saving document:', documentData);
