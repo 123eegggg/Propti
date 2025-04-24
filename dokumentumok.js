@@ -29,40 +29,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         {
             cloudName: 'dzacqmusj',
             uploadPreset: 'propti_documents',
-            sources: ['local'],
-            multiple: false,
-            maxFiles: 1,
-            resourceType: 'raw',
-            acceptedFiles: '.pdf',
-            showAdvancedOptions: false,
-            showUploadMoreButton: false,
             folder: 'documents',
+            resourceType: 'raw',
             clientAllowedFormats: ['pdf'],
             maxFileSize: 20000000,
-            use_filename: true,
-            unique_filename: true,
-            context: true,
-            eager: [],
-            public_id_prefix: 'pdf_',
-            tags: ['pdf_upload'],
-            showCompletedButton: true,
-            styles: {
-                palette: {
-                    window: "#FFFFFF",
-                    windowBorder: "#90A0B3",
-                    tabIcon: "#0078FF",
-                    menuIcons: "#5A616A",
-                    textDark: "#000000",
-                    textLight: "#FFFFFF",
-                    link: "#0078FF",
-                    action: "#FF620C",
-                    inactiveTabIcon: "#0E2F5A",
-                    error: "#F44235",
-                    inProgress: "#0078FF",
-                    complete: "#20B832",
-                    sourceBg: "#E4EBF1"
-                }
-            }
+            sources: ['local'],
+            multiple: false,
+            showAdvancedOptions: false,
+            showUploadMoreButton: false
         },
         (error, result) => {
             console.log('Cloudinary callback triggered:', { error, result });
@@ -74,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (result && result.event === 'success') {
-                console.log('Upload Result:', result.info); // Debug log
+                console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
                     fileInput.dataset.cloudinaryUrl = result.info.secure_url;
@@ -470,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ownerId: user.uid,
                 createdAt: new Date().toISOString(),
                 downloadURL: fileInput.dataset.cloudinaryUrl,
-                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
+                fileName: fileInput.dataset.fileName || 'document.pdf'
             };
 
             console.log('Saving document:', documentData);
