@@ -1,13 +1,6 @@
 // PDF.js configuration
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Cloudinary configuration
-const cloudinaryConfig = {
-    cloudName: 'dzacqmusj',
-    uploadPreset: 'propti_docs',
-    apiKey: '946338433865959'
-};
-
 // Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for Firebase to be initialized
@@ -16,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initialize globals
-    const { auth } = window.fbAuth;
+    const { auth, onAuthStateChanged } = window.fbAuth;
     const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
     const documentsRef = collection(db, 'documents');
     
