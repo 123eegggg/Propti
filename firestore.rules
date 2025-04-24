@@ -124,14 +124,16 @@ service cloud.firestore {
                    ]) &&
                    request.resource.data.type in ['contract', 'invoice', 'other'] &&
                    request.resource.data.isSigned is bool &&
-                   (!request.resource.data.keys().hasAny(['fileUrl']) || 
-                    request.resource.data.fileUrl is string);
+                   (!request.resource.data.keys().hasAny(['downloadURL', 'cloudinaryPublicId']) || 
+                    (request.resource.data.downloadURL is string &&
+                     request.resource.data.cloudinaryPublicId is string));
       
       allow update: if isAuthenticated() && 
                    resource.data.ownerId == request.auth.uid &&
                    request.resource.data.diff(resource.data).affectedKeys()
                      .hasOnly(['title', 'type', 'propertyId', 'propertyLocation', 
-                             'isSigned', 'updatedAt', 'fileUrl']);
+                             'isSigned', 'updatedAt', 'downloadURL', 'cloudinaryPublicId',
+                             'fileName']);
       
       allow delete: if isAuthenticated() && 
                    resource.data.ownerId == request.auth.uid;

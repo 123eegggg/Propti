@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            let documentData = {
+            const documentData = {
                 title: formData.get('documentTitle'),
                 type: formData.get('documentType'),
                 propertyId,
@@ -457,12 +457,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const fileInput = e.target.querySelector('#documentFile');
             if (fileInput.dataset.cloudinaryUrl) {
-                documentData = {
-                    ...documentData,
-                    fileName: fileInput.files[0]?.name || 'document.pdf',
-                    downloadURL: fileInput.dataset.cloudinaryUrl,
-                    cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
-                };
+                documentData.downloadURL = fileInput.dataset.cloudinaryUrl;
+                documentData.cloudinaryPublicId = fileInput.dataset.cloudinaryPublicId;
+                documentData.fileName = fileInput.files[0]?.name || 'document.pdf';
             }
 
             await addDoc(documentsRef, documentData);
