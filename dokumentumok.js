@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         scale: 1.5
     };
 
-    // Initialize Cloudinary widget with correct PDF configuration
+    // Initialize Cloudinary widget with proper PDF handling
     const cloudinaryWidget = cloudinary.createUploadWidget(
         {
             cloudName: 'dzacqmusj',
@@ -32,15 +32,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             sources: ['local'],
             multiple: false,
             maxFiles: 1,
-            resourceType: 'raw',  // This ensures files are treated as raw files, not images
+            resourceType: 'auto',  // Changed from 'raw' to 'auto' to let Cloudinary detect file type
             folder: 'documents',
             clientAllowedFormats: ['pdf'],
             maxFileSize: 20000000,
             showAdvancedOptions: false,
-            showUploadMoreButton: false
+            showUploadMoreButton: false,
+            styles: {
+                palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#90A0B3",
+                    tabIcon: "#0078FF",
+                    menuIcons: "#5A616A",
+                    textDark: "#000000",
+                    textLight: "#FFFFFF",
+                    link: "#0078FF",
+                    action: "#FF620C",
+                    inactiveTabIcon: "#0E2F5A",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#E4EBF1"
+                }
+            }
         },
         (error, result) => {
-            console.log('Cloudinary callback:', result);
+            console.log('Cloudinary callback triggered:', result);
             
             if (error) {
                 console.error('Cloudinary Upload Error:', error);
@@ -52,9 +69,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
-                    // Use url instead of secure_url for raw files
-                    fileInput.dataset.cloudinaryUrl = result.info.url;
+                    fileInput.dataset.cloudinaryUrl = result.info.secure_url;
                     fileInput.dataset.fileName = result.info.original_filename;
+                    fileInput.dataset.cloudinaryPublicId = result.info.public_id;
                     
                     const preview = document.querySelector('#filePreview');
                     if (preview) {
