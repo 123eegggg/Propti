@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initialize globals
+    const { auth } = window.fbAuth;
+    const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
+    const documentsRef = collection(db, 'documents');
+    
     const pdfState = {
         doc: null,
         pageNum: 1,
@@ -27,9 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Cloudinary upload widget
     const cloudinaryWidget = cloudinary.createUploadWidget(
         {
-            cloudName: cloudinaryConfig.cloudName,
+            cloudName: 'dzacqmusj',
             uploadPreset: 'propti_documents',
-            apiKey: cloudinaryConfig.apiKey,
             sources: ['local'],
             multiple: false,
             maxFiles: 1,
@@ -39,24 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showUploadMoreButton: false,
             folder: 'documents',
             clientAllowedFormats: ['pdf'],
-            maxFileSize: 20000000, // 20MB max file size
-            styles: {
-                palette: {
-                    window: '#FFFFFF',
-                    windowBorder: '#90A0B3',
-                    tabIcon: '#0078FF',
-                    menuIcons: '#5A616A',
-                    textDark: '#000000',
-                    textLight: '#FFFFFF',
-                    link: '#0078FF',
-                    action: '#FF620C',
-                    inactiveTabIcon: '#0E2F5A',
-                    error: '#F44235',
-                    inProgress: '#0078FF',
-                    complete: '#20B832',
-                    sourceBg: '#E4EBF1'
-                }
-            }
+            maxFileSize: 20000000
         },
         (error, result) => {
             if (error) {
@@ -71,8 +57,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (fileInput) {
                     fileInput.dataset.cloudinaryUrl = uploadResult.secure_url;
                     fileInput.dataset.cloudinaryPublicId = uploadResult.public_id;
+                    fileInput.dataset.originalFilename = uploadResult.original_filename;
                     
-                    // Update preview
                     const preview = document.querySelector('#filePreview');
                     if (preview) {
                         preview.innerHTML = `
@@ -106,11 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         editModal: document.getElementById('editDocumentModal'),
         editForm: document.getElementById('editDocumentForm')
     };
-
-    // Initialize Firebase references
-    const { db, collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc } = window.fbDb;
-    const { auth, onAuthStateChanged } = window.fbAuth;
-    const documentsRef = collection(db, 'documents');
 
     // Add authentication state observer
     onAuthStateChanged(auth, (user) => {
@@ -444,7 +425,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            // Create document data with all required fields
+            const fileInput = e.target.querySelector('#documentFile');
+            if (!fileInput.dataset.cloudinaryUrl) {
+                alert('Kérem, töltsön fel egy PDF dokumentumot!');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Mentés';
+                return;
+            }
+
+            // Create document data with required fields
             const documentData = {
                 title: formData.get('documentTitle'),
                 type: formData.get('documentType'),
@@ -453,16 +442,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isSigned: formData.get('isSigned') === 'true',
                 createdAt: new Date().toISOString(),
                 ownerId: auth.currentUser.uid,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                downloadURL: fileInput.dataset.cloudinaryUrl,
+                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId,
+                fileName: fileInput.dataset.originalFilename || 'document.pdf'
             };
-
-            // Add Cloudinary info if file was uploaded
-            const fileInput = e.target.querySelector('#documentFile');
-            if (fileInput.dataset.cloudinaryUrl) {
-                documentData.downloadURL = fileInput.dataset.cloudinaryUrl;
-                documentData.cloudinaryPublicId = fileInput.dataset.cloudinaryPublicId;
-                documentData.fileName = fileInput.files[0]?.name || 'document.pdf';
-            }
 
             await addDoc(documentsRef, documentData);
             elements.modal.style.display = 'none';
