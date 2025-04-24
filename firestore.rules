@@ -82,8 +82,7 @@ service cloud.firestore {
 
     // Payments collection rules
     match /payments/{paymentId} {
-      allow read: if request.auth != null && 
-                 resource.data.ownerId == request.auth.uid;
+      allow list, read: if request.auth != null;  // Allow listing and reading of payments
       
       allow create: if request.auth != null && 
                    request.resource.data.ownerId == request.auth.uid &&
@@ -92,8 +91,6 @@ service cloud.firestore {
       
       allow update, delete: if request.auth != null && 
                           resource.data.ownerId == request.auth.uid;
-      
-      allow list: if isAuthenticated() && request.auth != null;
     }
 
     // Maintenance collection rules

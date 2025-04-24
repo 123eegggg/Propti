@@ -1,6 +1,13 @@
 // PDF.js configuration
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// Cloudinary configuration
+const cloudinaryConfig = {
+    cloudName: 'dzacqmusj',
+    uploadPreset: 'propti_docs',
+    apiKey: '946338433865959'
+};
+
 // Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for Firebase to be initialized
@@ -16,6 +23,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         pageNumPending: null,
         scale: 1.5
     };
+
+    // Initialize Cloudinary upload widget
+    const cloudinaryWidget = cloudinary.createUploadWidget(
+        {
+            cloudName: cloudinaryConfig.cloudName,
+            uploadPreset: 'propti_documents',
+            apiKey: cloudinaryConfig.apiKey,
+            sources: ['local'],
+            multiple: false,
+            maxFiles: 1,
+            resourceType: 'raw',
+            acceptedFiles: '.pdf',
+            showAdvancedOptions: false,
+            showUploadMoreButton: false,
+            folder: 'documents',
+            clientAllowedFormats: ['pdf'],
+            maxFileSize: 20000000, // 20MB max file size
+            styles: {
+                palette: {
+                    window: '#FFFFFF',
+                    windowBorder: '#90A0B3',
+                    tabIcon: '#0078FF',
+                    menuIcons: '#5A616A',
+                    textDark: '#000000',
+                    textLight: '#FFFFFF',
+                    link: '#0078FF',
+                    action: '#FF620C',
+                    inactiveTabIcon: '#0E2F5A',
+                    error: '#F44235',
+                    inProgress: '#0078FF',
+                    complete: '#20B832',
+                    sourceBg: '#E4EBF1'
+                }
+            }
+        },
+        (error, result) => {
+            if (error) {
+                console.error('Cloudinary Upload Error:', error);
+                alert('Hiba történt a fájl feltöltése közben: ' + error.message);
+                return;
+            }
+            
+            if (result && result.event === 'success') {
+                const uploadResult = result.info;
+                const fileInput = document.querySelector('#documentFile');
+                if (fileInput) {
+                    fileInput.dataset.cloudinaryUrl = uploadResult.secure_url;
+                    fileInput.dataset.cloudinaryPublicId = uploadResult.public_id;
+                    
+                    // Update preview
+                    const preview = document.querySelector('#filePreview');
+                    if (preview) {
+                        preview.innerHTML = `
+                            <i class="fas fa-file-pdf"></i>
+                            <p>${uploadResult.original_filename}</p>
+                        `;
+                    }
+                }
+            }
+        }
+    );
 
     // Get DOM elements
     const elements = {
@@ -67,14 +135,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const ctx = elements.pdfCanvas.getContext('2d');
             
-            // Get fresh URL from S3
-            const s3Key = pdfUrl.split('/').pop();
-            const response = await fetch(`http://localhost:3000/getFileUrl/${s3Key}`);
-            const { url: freshUrl } = await response.json();
-
-            // Load PDF
+            // Load PDF directly from Cloudinary URL
             const loadingTask = pdfjsLib.getDocument({
-                url: freshUrl,
+                url: pdfUrl,
                 withCredentials: false
             });
             
@@ -218,45 +281,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.editFileInput.addEventListener('change', () => updateFilePreview(elements.editFileInput, elements.editFilePreview));
     }
 
-    // S3 file operations
-    async function uploadFileToS3(file) {
-        try {
-            const presignedUrlResponse = await fetch('http://localhost:3000/getPresignedUrl', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName: file.name,
-                    fileType: file.type
-                })
-            });
-            
-            const { url, key } = await presignedUrlResponse.json();
-            await fetch(url, {
-                method: 'PUT',
-                body: file,
-                headers: { 'Content-Type': file.type }
-            });
-
-            const fileUrlResponse = await fetch(`http://localhost:3000/getFileUrl/${key}`);
-            const { url: downloadURL } = await fileUrlResponse.json();
-
-            return { key, downloadURL };
-        } catch (error) {
-            console.error('Error uploading to S3:', error);
-            throw error;
-        }
-    }
-
-    async function deleteFileFromS3(key) {
-        try {
-            await fetch(`http://localhost:3000/deleteFile/${key}`, {
-                method: 'DELETE'
-            });
-        } catch (error) {
-            console.error('Error deleting from S3:', error);
-            throw error;
-        }
-    }
+    // Replace file input click with Cloudinary widget
+    elements.fileInput?.addEventListener('click', (e) => {
+        e.preventDefault();
+        cloudinaryWidget.open();
+    });
 
     // Property management
     async function loadPropertiesForSelect(selectId = 'propertySelect') {
@@ -427,16 +456,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             const fileInput = e.target.querySelector('#documentFile');
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const uploadResult = await uploadFileToS3(file);
+            if (fileInput.dataset.cloudinaryUrl) {
                 documentData = {
                     ...documentData,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type,
-                    s3Key: uploadResult.key,
-                    downloadURL: uploadResult.downloadURL
+                    fileName: fileInput.files[0]?.name || 'document.pdf',
+                    downloadURL: fileInput.dataset.cloudinaryUrl,
+                    cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
                 };
             }
 
@@ -448,6 +473,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error uploading document:', error);
             alert('Hiba történt a dokumentum feltöltése közben: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Mentés';
+        }
+    });
+
+    // Edit form handlers
+    elements.editForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
+
+        try {
+            const formData = new FormData(e.target);
+            const documentId = formData.get('documentId');
+            const propertyId = formData.get('propertySelect');
+            let propertyLocation = '';
+            
+            if (propertyId) {
+                const propertySnap = await getDoc(doc(db, 'properties', propertyId));
+                if (propertySnap.exists()) {
+                    propertyLocation = propertySnap.data().location;
+                }
+            }
+
+            let documentData = {
+                title: formData.get('documentTitle'),
+                type: formData.get('documentType'),
+                propertyId,
+                propertyLocation,
+                isSigned: formData.get('isSigned') === 'true',
+                updatedAt: new Date().toISOString()
+            };
+
+            const fileInput = e.target.querySelector('#editDocumentFile');
+            if (fileInput.dataset.cloudinaryUrl) {
+                // Delete old file if exists
+                const oldDoc = await getDoc(doc(db, 'documents', documentId));
+                if (oldDoc.exists() && oldDoc.data().cloudinaryPublicId) {
+                    try {
+                        await cloudinary.delete_by_token(oldDoc.data().cloudinaryPublicId);
+                    } catch (error) {
+                        console.warn('Error deleting old file:', error);
+                    }
+                }
+
+                documentData = {
+                    ...documentData,
+                    fileName: fileInput.files[0]?.name || 'document.pdf',
+                    downloadURL: fileInput.dataset.cloudinaryUrl,
+                    cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
+                };
+            }
+
+            await updateDoc(doc(db, 'documents', documentId), documentData);
+            elements.editModal.style.display = 'none';
+            await loadDocuments();
+            alert('Dokumentum sikeresen módosítva!');
+        } catch (error) {
+            console.error('Error updating document:', error);
+            alert('Hiba történt a dokumentum módosítása közben: ' + error.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Mentés';
@@ -522,9 +609,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Document deletion
     window.deleteDocument = async (documentId) => {
+        if (!confirm('Biztosan törölni szeretné ezt a dokumentumot?')) return;
+
         try {
-            if (!confirm('Biztosan törölni szeretné ezt a dokumentumot?')) return;
-            
             const docRef = doc(db, 'documents', documentId);
             const docSnap = await getDoc(docRef);
             
@@ -533,11 +620,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const documentData = docSnap.data();
-            if (documentData.s3Key) {
+            if (documentData.cloudinaryPublicId) {
                 try {
-                    await deleteFileFromS3(documentData.s3Key);
-                } catch (s3Error) {
-                    console.error('Error deleting file from S3:', s3Error);
+                    await cloudinary.delete_by_token(documentData.cloudinaryPublicId);
+                } catch (error) {
+                    console.warn('Error deleting file from Cloudinary:', error);
                 }
             }
 
