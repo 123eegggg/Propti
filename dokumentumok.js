@@ -444,17 +444,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // Create document data with all required fields
             const documentData = {
                 title: formData.get('documentTitle'),
                 type: formData.get('documentType'),
-                propertyId,
-                propertyLocation,
+                propertyId: propertyId || null,
+                propertyLocation: propertyLocation || 'Nincs megadva',
                 isSigned: formData.get('isSigned') === 'true',
                 createdAt: new Date().toISOString(),
                 ownerId: auth.currentUser.uid,
                 updatedAt: new Date().toISOString()
             };
 
+            // Add Cloudinary info if file was uploaded
             const fileInput = e.target.querySelector('#documentFile');
             if (fileInput.dataset.cloudinaryUrl) {
                 documentData.downloadURL = fileInput.dataset.cloudinaryUrl;

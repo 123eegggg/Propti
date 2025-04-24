@@ -119,21 +119,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                    request.resource.data.ownerId == request.auth.uid &&
                    request.resource.data.keys().hasAll([
-                     'title', 'type', 'createdAt', 'ownerId', 
-                     'propertyId', 'propertyLocation', 'isSigned'
+                     'title', 'type', 'createdAt', 'ownerId',
+                     'propertyLocation', 'isSigned'
                    ]) &&
                    request.resource.data.type in ['contract', 'invoice', 'other'] &&
-                   request.resource.data.isSigned is bool &&
-                   (!request.resource.data.keys().hasAny(['downloadURL', 'cloudinaryPublicId']) || 
-                    (request.resource.data.downloadURL is string &&
-                     request.resource.data.cloudinaryPublicId is string));
+                   request.resource.data.isSigned is bool;
       
       allow update: if isAuthenticated() && 
-                   resource.data.ownerId == request.auth.uid &&
-                   request.resource.data.diff(resource.data).affectedKeys()
-                     .hasOnly(['title', 'type', 'propertyId', 'propertyLocation', 
-                             'isSigned', 'updatedAt', 'downloadURL', 'cloudinaryPublicId',
-                             'fileName']);
+                   resource.data.ownerId == request.auth.uid;
       
       allow delete: if isAuthenticated() && 
                    resource.data.ownerId == request.auth.uid;
