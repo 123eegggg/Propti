@@ -402,23 +402,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Document form handlers
     elements.documentForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Check authentication
+        const user = auth.currentUser;
+        if (!user) {
+            alert('A dokumentum feltöltéséhez be kell jelentkeznie!');
+            return;
+        }
+
         const submitBtn = e.target.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
 
         try {
             const formData = new FormData(e.target);
-            const propertyId = formData.get('propertySelect');
-            let propertyLocation = '';
-            
-            if (propertyId) {
-                const propertySnap = await getDoc(doc(db, 'properties', propertyId));
-                if (propertySnap.exists()) {
-                    propertyLocation = propertySnap.data().location;
-                }
-            }
-
             const fileInput = e.target.querySelector('#documentFile');
+            
             if (!fileInput.dataset.cloudinaryUrl) {
                 alert('Kérem, töltsön fel egy PDF dokumentumot!');
                 submitBtn.disabled = false;
@@ -426,26 +425,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Create document data with required fields
+            // Create minimal document data
             const documentData = {
                 title: formData.get('documentTitle'),
                 type: formData.get('documentType'),
-                propertyId: propertyId || null,
-                propertyLocation: propertyLocation || 'Nincs megadva',
-                isSigned: formData.get('isSigned') === 'true',
+                ownerId: user.uid,
                 createdAt: new Date().toISOString(),
-                ownerId: auth.currentUser.uid,
-                updatedAt: new Date().toISOString(),
                 downloadURL: fileInput.dataset.cloudinaryUrl,
-                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId,
-                fileName: fileInput.dataset.originalFilename || 'document.pdf'
+                cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
             };
 
+            // Save to Firestore
             await addDoc(documentsRef, documentData);
-            elements.modal.style.display = 'none';
+            
+            // Close modal and reset form
+            const modal = document.getElementById('newDocumentModal');
+            modal.style.display = 'none';
             e.target.reset();
-            await loadDocuments();
+            
+            // Reset preview
+            const preview = document.querySelector('#filePreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Kattintson vagy húzza ide a PDF fájlt</p>
+                `;
+            }
+            
             alert('Dokumentum sikeresen feltöltve!');
+            
         } catch (error) {
             console.error('Error uploading document:', error);
             alert('Hiba történt a dokumentum feltöltése közben: ' + error.message);
