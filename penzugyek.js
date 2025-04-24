@@ -66,6 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return expenseTypes.includes(type);
     }
 
+    // Helper function to get transaction amount class
+    function getAmountClass(type) {
+        if (type === 'kaucio') return 'deposit';
+        if (type === 'rent') return 'positive';
+        if (isExpenseType(type)) return 'negative';
+        return '';
+    }
+
     // Update loadTransactions function to handle unified search
     async function loadTransactions(userId, filters = {}) {
         try {
@@ -134,17 +142,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (paymentDate < startDate) includePayment = false;
                 }
 
+                // Only count non-kaució payments in monthly totals
+                if (includePayment && paymentDate.getMonth() === currentMonth && 
+                    paymentDate.getFullYear() === currentYear && data.type !== 'kaucio') {
+                    if (isExpenseType(data.type)) {
+                        monthlyExpense += Math.abs(data.amount);
+                    } else if (data.type === 'rent') {
+                        monthlyIncome += data.amount;
+                    }
+                }
+
                 if (includePayment) {
                     filteredDocs.push({ id: doc.id, data });
-
-                    if (paymentDate.getMonth() === currentMonth && 
-                        paymentDate.getFullYear() === currentYear) {
-                        if (isExpenseType(data.type)) {
-                            monthlyExpense += Math.abs(data.amount);
-                        } else {
-                            monthlyIncome += data.amount;
-                        }
-                    }
 
                     if (paymentDate.getMonth() === lastMonth && 
                         paymentDate.getFullYear() === lastMonthYear && 
@@ -180,14 +189,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 filteredDocs.forEach(({ id, data }) => {
                     const tr = document.createElement('tr');
-                    const isExpense = isExpenseType(data.type);
+                    const amountClass = getAmountClass(data.type);
                     
                     tr.innerHTML = `
                         <td>${new Date(data.date).toLocaleDateString('hu-HU')}</td>
                         <td>${getTransactionTypeName(data.type)}</td>
                         <td>${data.property}</td>
                         <td>${tenantsMap.get(data.tenant) || '-'}</td>
-                        <td class="amount ${isExpense ? 'negative' : 'positive'}">
+                        <td class="amount ${amountClass}">
                             ${data.amount.toLocaleString()} Ft
                         </td>
                         <td>
@@ -220,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getTransactionTypeName(type) {
         const types = {
             rent: 'Bérleti díj',
+            kaucio: 'Kaució',
             maintenance: 'Karbantartás',
             utility: 'Rezsi',
             tax: 'Adó',

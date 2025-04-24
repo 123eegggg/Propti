@@ -110,6 +110,22 @@
     color: #10b981;
 }
 
+.transactions-table .amount {
+    font-weight: 600;
+}
+
+.transactions-table .amount.positive {
+    color: #2ecc71;
+}
+
+.transactions-table .amount.negative {
+    color: #e74c3c;
+}
+
+.transactions-table .amount.deposit {
+    color: #3498db;
+}
+
 .transactions-table .filter-row th {
     padding: 0.5rem 1rem;
     vertical-align: top;
