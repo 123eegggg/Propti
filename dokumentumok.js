@@ -1,21 +1,16 @@
+// Import UploadCare configuration
+import uploadcareConfig from './uploadcare-config.js';
+
 // PDF.js configuration
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Initialize UploadCare widget with secure configuration
-const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]', {
-    publicKey: '3ab83f53d7004ed0b77f', // This will be replaced with backend call
-    tabs: 'file',
-    multiple: false,
-    inputAcceptTypes: '.pdf',
-    preferredTypes: ['application/pdf'],
-    validators: [
-        function pdfValidator(fileInfo) {
-            if (fileInfo.name && !fileInfo.name.toLowerCase().endsWith('.pdf')) {
-                throw new Error('Csak PDF fájlok feltöltése engedélyezett');
-            }
-        }
-    ]
-});
+// Initialize UploadCare widgets with shared configuration
+const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]', uploadcareConfig);
+const editUploadWidget = uploadcare.Widget('[role=uploadcare-uploader-edit]', uploadcareConfig);
+
+// Initialize widgets with no value
+uploadWidget.value(null);
+editUploadWidget.value(null);
 
 // Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
@@ -381,10 +376,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         console.log('Form submission started');
         
-        // Check authentication
         const user = auth.currentUser;
         if (!user) {
-            console.log('No user found, showing alert');
             alert('A dokumentum feltöltéséhez be kell jelentkeznie!');
             return;
         }
@@ -395,46 +388,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const formData = new FormData(e.target);
-            const fileInput = document.querySelector('[role=uploadcare-uploader]');
             const fileInfo = uploadWidget.value();
             
-            console.log('Form data:', {
-                title: formData.get('documentTitle'),
-                type: formData.get('documentType'),
-                uploadcareUrl: fileInfo.cdnUrl
-            });
-
             if (!fileInfo) {
-                console.log('No file uploaded, showing alert');
                 alert('Kérem, töltsön fel egy PDF dokumentumot!');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Mentés';
                 return;
             }
 
-            // Create minimal document data
+            const propertyId = formData.get('propertyId');
+            let propertyLocation = '';
+            
+            if (propertyId) {
+                const propertySnap = await getDoc(doc(db, 'properties', propertyId));
+                if (propertySnap.exists()) {
+                    propertyLocation = propertySnap.data().location;
+                }
+            }
+
             const documentData = {
-                title: formData.get('documentTitle'),
-                type: formData.get('documentType'),
+                title: formData.get('title'),
+                type: formData.get('type'),
+                propertyId,
+                propertyLocation,
                 ownerId: user.uid,
                 createdAt: new Date().toISOString(),
                 downloadURL: fileInfo.cdnUrl,
                 fileName: fileInfo.name || 'document.pdf',
-                uploadcareUuid: fileInfo.uuid
+                uploadcareUuid: fileInfo.uuid,
+                isSigned: formData.get('isSigned') === 'true'
             };
 
-            console.log('Saving document:', documentData);
-
-            // Save to Firestore
             await addDoc(documentsRef, documentData);
-            console.log('Document saved with ID:', docRef.id);
             
-            // Close modal and reset form
-            const modal = document.getElementById('newDocumentModal');
-            modal.style.display = 'none';
+            elements.modal.style.display = 'none';
             e.target.reset();
+            uploadWidget.value(null);
             
-            // Reset preview
             const preview = document.querySelector('#filePreview');
             if (preview) {
                 preview.innerHTML = `
@@ -444,7 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             alert('Dokumentum sikeresen feltöltve!');
-            location.reload(); // Refresh to show new document
+            await loadDocuments();
             
         } catch (error) {
             console.error('Error uploading document:', error);
@@ -465,7 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const formData = new FormData(e.target);
             const documentId = formData.get('documentId');
-            const propertyId = formData.get('propertySelect');
+            const propertyId = formData.get('propertyId');
             let propertyLocation = '';
             
             if (propertyId) {
@@ -476,36 +467,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             let documentData = {
-                title: formData.get('documentTitle'),
-                type: formData.get('documentType'),
+                title: formData.get('title'),
+                type: formData.get('type'),
                 propertyId,
                 propertyLocation,
                 isSigned: formData.get('isSigned') === 'true',
                 updatedAt: new Date().toISOString()
             };
 
-            const fileInput = e.target.querySelector('#editDocumentFile');
-            if (fileInput.dataset.cloudinaryUrl) {
+            const fileInfo = editUploadWidget.value();
+            if (fileInfo) {
                 // Delete old file if exists
                 const oldDoc = await getDoc(doc(db, 'documents', documentId));
-                if (oldDoc.exists() && oldDoc.data().cloudinaryPublicId) {
+                if (oldDoc.exists() && oldDoc.data().uploadcareUuid) {
                     try {
-                        await cloudinary.delete_by_token(oldDoc.data().cloudinaryPublicId);
+                        // Note: UploadCare handles file deletion automatically after some time
+                        console.log('Old file will be automatically cleaned up by UploadCare');
                     } catch (error) {
-                        console.warn('Error deleting old file:', error);
+                        console.warn('Error with old file:', error);
                     }
                 }
 
                 documentData = {
                     ...documentData,
-                    fileName: fileInput.files[0]?.name || 'document.pdf',
-                    downloadURL: fileInput.dataset.cloudinaryUrl,
-                    cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
+                    fileName: fileInfo.name || 'document.pdf',
+                    downloadURL: fileInfo.cdnUrl,
+                    uploadcareUuid: fileInfo.uuid
                 };
             }
 
             await updateDoc(doc(db, 'documents', documentId), documentData);
             elements.editModal.style.display = 'none';
+            editUploadWidget.value(null);
             await loadDocuments();
             alert('Dokumentum sikeresen módosítva!');
         } catch (error) {
@@ -595,15 +588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Document not found');
             }
 
-            const documentData = docSnap.data();
-            if (documentData.cloudinaryPublicId) {
-                try {
-                    await cloudinary.delete_by_token(documentData.cloudinaryPublicId);
-                } catch (error) {
-                    console.warn('Error deleting file from Cloudinary:', error);
-                }
-            }
-
+            // Note: UploadCare handles file deletion automatically
             await deleteDoc(docRef);
             await loadDocuments();
             alert('Dokumentum sikeresen törölve!');
@@ -613,7 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // File preview functionality
+    // File preview functionality for both widgets
     uploadWidget.onChange(function(file) {
         if (file) {
             const preview = document.querySelector('#filePreview');
@@ -625,4 +610,167 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     });
+
+    editUploadWidget.onChange(function(file) {
+        if (file) {
+            const preview = document.querySelector('#editFilePreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <i class="fas fa-file-pdf"></i>
+                    <p>${file.name || 'PDF dokumentum'}</p>
+                `;
+                const currentFileEl = preview.querySelector('.current-file');
+                if (currentFileEl) {
+                    currentFileEl.style.display = 'none';
+                }
+            }
+        }
+    });
+    
+    // Reset widgets when modals are closed
+    elements.modal?.addEventListener('hidden', () => {
+        uploadWidget.value(null);
+        const preview = document.querySelector('#filePreview');
+        if (preview) {
+            preview.innerHTML = `
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
+            `;
+        }
+    });
+
+    elements.editModal?.addEventListener('hidden', () => {
+        editUploadWidget.value(null);
+        const preview = document.querySelector('#editFilePreview');
+        if (preview) {
+            preview.innerHTML = `
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
+                <p class="current-file" style="display:none">Jelenlegi fájl: <span></span></p>
+            `;
+        }
+    });
+
+    // Form submission handlers
+    elements.newDocumentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInfo = uploadWidget.value();
+        
+        try {
+            const docData = {
+                title: elements.documentTitle.value,
+                type: elements.documentType.value,
+                propertyId: elements.propertySelect.value,
+                isSigned: elements.isSigned.value === 'true',
+                uploadDate: new Date().toISOString(),
+                userId: auth.currentUser.uid
+            };
+
+            if (fileInfo) {
+                docData.uploadcareUuid = fileInfo.uuid;
+                docData.fileName = fileInfo.name || 'document.pdf';
+                docData.fileUrl = fileInfo.cdnUrl;
+            }
+
+            await addDoc(collection(db, 'documents'), docData);
+            elements.modal.style.display = 'none';
+            await loadDocuments();
+            alert('Dokumentum sikeresen feltöltve!');
+        } catch (error) {
+            console.error('Error saving document:', error);
+            alert('Hiba történt a dokumentum mentése közben: ' + error.message);
+        }
+    });
+
+    elements.editDocumentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const documentId = elements.editDocumentId.value;
+        const fileInfo = editUploadWidget.value();
+        
+        try {
+            const docRef = doc(db, 'documents', documentId);
+            const docData = {
+                title: elements.editDocumentTitle.value,
+                type: elements.editDocumentType.value,
+                propertyId: elements.editPropertySelect.value,
+                isSigned: elements.editIsSigned.value === 'true',
+                lastModified: new Date().toISOString()
+            };
+
+            if (fileInfo) {
+                docData.uploadcareUuid = fileInfo.uuid;
+                docData.fileName = fileInfo.name || 'document.pdf';
+                docData.fileUrl = fileInfo.cdnUrl;
+            }
+
+            await updateDoc(docRef, docData);
+            elements.editModal.style.display = 'none';
+            await loadDocuments();
+            alert('Dokumentum sikeresen módosítva!');
+        } catch (error) {
+            console.error('Error updating document:', error);
+            alert('Hiba történt a dokumentum módosítása közben: ' + error.message);
+        }
+    });
+
+    // Initialize UploadCare widgets
+    const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]');
+    const editUploadWidget = uploadcare.Widget('#editDocumentUploader');
+
+    uploadWidget.value(null);
+    editUploadWidget.value(null);
+
+    // Configure widgets
+    [uploadWidget, editUploadWidget].forEach(widget => {
+        widget.validators.push(function(fileInfo) {
+            if (fileInfo.size > 10 * 1024 * 1024) {
+                throw new Error('A fájl mérete nem lehet nagyobb 10MB-nál');
+            }
+            if (fileInfo.mimeType && !fileInfo.mimeType.startsWith('application/pdf')) {
+                throw new Error('Csak PDF fájlok feltöltése engedélyezett');
+            }
+            return true;
+        });
+    });
+
+    async function deleteDocument(documentId) {
+        try {
+            // Get the document data first to get the UploadCare UUID
+            const docRef = doc(db, 'documents', documentId);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const documentData = docSnap.data();
+                
+                // Delete from Firestore first
+                await deleteDoc(docRef);
+                
+                // If there's an UploadCare file, delete it from their storage
+                if (documentData.uploadcareUuid) {
+                    try {
+                        const response = await fetch(`https://api.uploadcare.com/files/${documentData.uploadcareUuid}/`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Uploadcare.Simple ${UPLOADCARE_PUBLIC_KEY}:${UPLOADCARE_SECRET_KEY}`,
+                                'Accept': 'application/vnd.uploadcare-v0.5+json'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            console.warn('Failed to delete file from UploadCare:', response.statusText);
+                        }
+                    } catch (uploadcareError) {
+                        console.warn('Error deleting from UploadCare:', uploadcareError);
+                        // Continue execution even if UploadCare deletion fails
+                    }
+                }
+                
+                await loadDocuments();
+                alert('Dokumentum sikeresen törölve!');
+            }
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            alert('Hiba történt a dokumentum törlése közben: ' + error.message);
+        }
+    }
 });

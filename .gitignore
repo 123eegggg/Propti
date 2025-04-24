@@ -3,7 +3,8 @@ config.js
 
 # Environment variables
 .env
-.env.*
+.env.local
+.env.*.local
 
 # Node modules
 node_modules/
@@ -15,7 +16,8 @@ node_modules/
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.swp
+*.swo
 
 # OS generated files
 .DS_Store
@@ -25,3 +27,11 @@ node_modules/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*

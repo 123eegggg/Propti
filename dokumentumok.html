@@ -138,6 +138,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2>Dokumentum Szerkesztése</h2>
+                        <button class="close-modal">&times;</button>
                     </div>
                     <form id="editDocumentForm">
                         <input type="hidden" id="editDocumentId" name="documentId">
@@ -168,15 +169,20 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="editDocumentFile">PDF dokumentum (opcionális)</label>
-                            <div class="file-upload-area">
-                                <input type="file" id="editDocumentFile" name="file" accept=".pdf">
-                                <div id="editFilePreview">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
-                                    <p class="current-file" style="display:none">Jelenlegi fájl: <span></span></p>
-                                </div>
+                            <label>PDF dokumentum:</label>
+                            <div id="editFilePreview" class="file-preview">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Kattintson vagy húzza ide a PDF fájlt (nem kötelező)</p>
+                                <p class="current-file" style="display:none">Jelenlegi fájl: <span></span></p>
                             </div>
+                            <input 
+                                type="hidden" 
+                                id="editDocumentUploader"
+                                role="uploadcare-uploader"
+                                data-public-key="YOUR_UPLOADCARE_PUBLIC_KEY"
+                                data-tabs="file gdrive dropbox url"
+                                data-accept="application/pdf"
+                            />
                         </div>
                         <div class="form-actions">
                             <button type="button" class="btn-secondary" id="cancelEditDocument">Mégsem</button>
