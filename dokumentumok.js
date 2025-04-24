@@ -24,22 +24,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         scale: 1.5
     };
 
-    // Initialize Cloudinary upload widget
+    // Initialize Cloudinary widget with minimal configuration
     const cloudinaryWidget = cloudinary.createUploadWidget(
         {
             cloudName: 'dzacqmusj',
             uploadPreset: 'propti_documents',
-            folder: 'documents',
-            resourceType: 'raw',
-            clientAllowedFormats: ['pdf'],
-            maxFileSize: 20000000,
             sources: ['local'],
             multiple: false,
-            showAdvancedOptions: false,
-            showUploadMoreButton: false
+            maxFiles: 1,
+            folder: 'documents',
+            resourceType: 'raw',
+            acceptedFiles: 'application/pdf',
+            clientAllowedFormats: ['pdf']
         },
         (error, result) => {
-            console.log('Cloudinary callback triggered:', { error, result });
+            console.log('Cloudinary callback:', { event: result?.event, info: result?.info });
             
             if (error) {
                 console.error('Cloudinary Upload Error:', error);
@@ -47,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            if (result && result.event === 'success') {
+            if (result?.event === 'success' && result?.info) {
                 console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
