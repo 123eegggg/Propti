@@ -32,18 +32,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             sources: ['local'],
             multiple: false,
             maxFiles: 1,
-            resourceType: 'raw',  // Matches format:Raw in preset
-            folder: 'documents',  // Matches asset folder setting
-            clientAllowedFormats: ['pdf'],  // Matches allowed formats setting
-            maxFileSize: 10000000, // 10MB limit
-            useFilename: true,  // Matches use filename setting
-            uniqueFilename: true,  // Matches unique filename setting
+            folder: 'documents',
+            clientAllowedFormats: ['pdf'],
+            maxFileSize: 10000000,
             showAdvancedOptions: false,
             showUploadMoreButton: false,
-            // Additional settings to match preset
-            prependPath: false,  // Matches use asset folder as public id prefix:false
-            publicId: null,  // Let Cloudinary generate unique IDs
-            overwrite: false  // Matches overwrite setting
+            params: {
+                resource_type: "raw",
+                format: "pdf",
+                type: "upload"
+            }
         },
         (error, result) => {
             console.log('Cloudinary callback:', result);
@@ -55,13 +53,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (result?.event === 'success') {
-                console.log('Upload successful:', result.info);
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
-                    // For raw files, use url instead of secure_url
                     fileInput.dataset.cloudinaryUrl = result.info.url;
                     fileInput.dataset.fileName = result.info.original_filename;
-                    fileInput.dataset.cloudinaryPublicId = result.info.public_id;
                     
                     const preview = document.querySelector('#filePreview');
                     if (preview) {
