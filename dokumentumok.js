@@ -3,10 +3,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 // Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Document loaded, initializing...');
+    
     // Wait for Firebase to be initialized
     while (!window.fbAuth || !window.fbDb) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
+    console.log('Firebase initialized');
 
     // Initialize globals
     const { auth, onAuthStateChanged } = window.fbAuth;
@@ -35,9 +38,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             showUploadMoreButton: false,
             folder: 'documents',
             clientAllowedFormats: ['pdf'],
-            maxFileSize: 20000000
+            maxFileSize: 20000000,
+            use_filename: true,
+            unique_filename: true,
+            context: true,
+            eager: [],
+            public_id_prefix: 'pdf_',
+            tags: ['pdf_upload'],
+            showCompletedButton: true,
+            styles: {
+                palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#90A0B3",
+                    tabIcon: "#0078FF",
+                    menuIcons: "#5A616A",
+                    textDark: "#000000",
+                    textLight: "#FFFFFF",
+                    link: "#0078FF",
+                    action: "#FF620C",
+                    inactiveTabIcon: "#0E2F5A",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#E4EBF1"
+                }
+            }
         },
         (error, result) => {
+            console.log('Cloudinary callback triggered:', { error, result });
+            
             if (error) {
                 console.error('Cloudinary Upload Error:', error);
                 alert('Hiba történt a fájl feltöltése közben: ' + error.message);
@@ -45,18 +74,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (result && result.event === 'success') {
-                const uploadResult = result.info;
+                console.log('Upload Result:', result.info); // Debug log
                 const fileInput = document.querySelector('#documentFile');
                 if (fileInput) {
-                    fileInput.dataset.cloudinaryUrl = uploadResult.secure_url;
-                    fileInput.dataset.cloudinaryPublicId = uploadResult.public_id;
-                    fileInput.dataset.originalFilename = uploadResult.original_filename;
+                    fileInput.dataset.cloudinaryUrl = result.info.secure_url;
+                    fileInput.dataset.fileName = result.info.original_filename;
                     
                     const preview = document.querySelector('#filePreview');
                     if (preview) {
                         preview.innerHTML = `
                             <i class="fas fa-file-pdf"></i>
-                            <p>${uploadResult.original_filename}</p>
+                            <p>${result.info.original_filename}</p>
                         `;
                     }
                 }
@@ -258,6 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Replace file input click with Cloudinary widget
     elements.fileInput?.addEventListener('click', (e) => {
         e.preventDefault();
+        console.log('Opening Cloudinary widget');
         cloudinaryWidget.open();
     });
 
@@ -402,10 +431,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Document form handlers
     elements.documentForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log('Form submission started');
         
         // Check authentication
         const user = auth.currentUser;
         if (!user) {
+            console.log('No user found, showing alert');
             alert('A dokumentum feltöltéséhez be kell jelentkeznie!');
             return;
         }
@@ -418,7 +449,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const formData = new FormData(e.target);
             const fileInput = e.target.querySelector('#documentFile');
             
+            console.log('Form data:', {
+                title: formData.get('documentTitle'),
+                type: formData.get('documentType'),
+                cloudinaryUrl: fileInput.dataset.cloudinaryUrl
+            });
+
             if (!fileInput.dataset.cloudinaryUrl) {
+                console.log('No file uploaded, showing alert');
                 alert('Kérem, töltsön fel egy PDF dokumentumot!');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Mentés';
@@ -435,8 +473,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cloudinaryPublicId: fileInput.dataset.cloudinaryPublicId
             };
 
+            console.log('Saving document:', documentData);
+
             // Save to Firestore
             await addDoc(documentsRef, documentData);
+            console.log('Document saved with ID:', docRef.id);
             
             // Close modal and reset form
             const modal = document.getElementById('newDocumentModal');
@@ -453,6 +494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             alert('Dokumentum sikeresen feltöltve!');
+            location.reload(); // Refresh to show new document
             
         } catch (error) {
             console.error('Error uploading document:', error);
