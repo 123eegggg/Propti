@@ -4,15 +4,9 @@ import uploadcareConfig from './uploadcare-config.js';
 // PDF.js configuration
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Initialize UploadCare widgets with shared configuration
+// Initialize UploadCare widget with shared configuration
 const uploadWidget = uploadcare.Widget('[role=uploadcare-uploader]', uploadcareConfig);
-const editUploadWidget = uploadcare.Widget('[role=uploadcare-uploader-edit]', uploadcareConfig);
 
-// Initialize widgets with no value
-uploadWidget.value(null);
-editUploadWidget.value(null);
-
-// Document management functionality
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Document loaded, initializing...');
     
@@ -58,10 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Add authentication state observer
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
+        console.log('Auth state changed:', user ? 'logged in' : 'logged out');
         if (user) {
             // User is signed in, load documents
-            loadDocuments();
+            await loadDocuments();
         } else {
             // User is signed out, clear documents
             if (elements.documentsGrid) {
@@ -279,6 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            console.log('Loading documents for user:', user.uid);
             elements.documentsGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Dokumentumok betöltése...</div>';
 
             const q = query(documentsRef, where('ownerId', '==', user.uid));
@@ -288,6 +284,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             querySnapshot.forEach((doc) => {
                 documents.push({ ...doc.data(), id: doc.id });
             });
+
+            console.log('Found documents:', documents.length);
 
             // Apply filter
             let filteredDocs = documents;
@@ -313,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Display results
             elements.documentsGrid.innerHTML = '';
             if (filteredDocs.length === 0) {
-                elements.documentsGrid.innerHTML = '<p class="no-documents">Nincsenek találatok</p>';
+                elements.documentsGrid.innerHTML = '<p class="no-documents">Nincsenek dokumentumok</p>';
                 return;
             }
 
@@ -330,6 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function createDocumentCard(doc) {
+        console.log('Creating card for document:', doc);
         const card = document.createElement('div');
         card.className = 'document-card';
         
@@ -350,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <i class="fas fa-${typeIcons[doc.type] || 'file-alt'}"></i>
             </div>
             <div class="document-info">
-                <h3>${doc.title}</h3>
+                <h3>${doc.title || 'Untitled'}</h3>
                 <p class="document-meta">
                     ${new Date(doc.createdAt).toLocaleDateString('hu-HU')}
                 </p>
@@ -364,14 +363,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
             <div class="document-actions">
                 ${doc.downloadURL ? `
-                    <button class="btn-icon view-pdf" onclick="showPDF('${doc.downloadURL}')" title="Megtekintés">
+                    <button class="btn-icon view-pdf" onclick="window.showPDF('${doc.downloadURL}')" title="Megtekintés">
                         <i class="fas fa-eye"></i>
                     </button>
                     <a href="${doc.downloadURL}" class="btn-icon download-pdf" download="${doc.title || 'document'}.pdf" title="Letöltés">
                         <i class="fas fa-download"></i>
                     </a>
                 ` : ''}
-                <button class="btn-icon" onclick="editDocument('${doc.id}')" title="Szerkesztés">
+                <button class="btn-icon edit-btn" onclick="editDocument('${doc.id}')" title="Szerkesztés">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn-icon delete-btn" onclick="deleteDocument('${doc.id}')" title="Törlés">
@@ -438,9 +437,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.target.reset();
             uploadWidget.value(null);
             
-            const preview = document.querySelector('#filePreview');
-            if (preview) {
-                preview.innerHTML = `
+            if (elements.filePreview) {
+                elements.filePreview.innerHTML = `
                     <i class="fas fa-cloud-upload-alt"></i>
                     <p>Kattintson vagy húzza ide a PDF fájlt</p>
                 `;
@@ -452,70 +450,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error uploading document:', error);
             alert('Hiba történt a dokumentum feltöltése közben: ' + error.message);
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Mentés';
-        }
-    });
-
-    // Edit form handlers
-    elements.editForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mentés...';
-
-        try {
-            const formData = new FormData(e.target);
-            const documentId = formData.get('documentId');
-            const propertyId = formData.get('propertyId');
-            let propertyLocation = '';
-            
-            if (propertyId) {
-                const propertySnap = await getDoc(doc(db, 'properties', propertyId));
-                if (propertySnap.exists()) {
-                    propertyLocation = propertySnap.data().location;
-                }
-            }
-
-            let documentData = {
-                title: formData.get('title'),
-                type: formData.get('type'),
-                propertyId,
-                propertyLocation,
-                isSigned: formData.get('isSigned') === 'true',
-                updatedAt: new Date().toISOString()
-            };
-
-            const fileInfo = editUploadWidget.value();
-            if (fileInfo) {
-                // Delete old file if exists
-                const oldDoc = await getDoc(doc(db, 'documents', documentId));
-                if (oldDoc.exists() && oldDoc.data().uploadcareUuid) {
-                    try {
-                        // Note: UploadCare handles file deletion automatically after some time
-                        console.log('Old file will be automatically cleaned up by UploadCare');
-                    } catch (error) {
-                        console.warn('Error with old file:', error);
-                    }
-                }
-
-                documentData = {
-                    ...documentData,
-                    fileName: fileInfo.name || 'document.pdf',
-                    downloadURL: fileInfo.cdnUrl,
-                    uploadcareUuid: fileInfo.uuid
-                };
-            }
-
-            await updateDoc(doc(db, 'documents', documentId), documentData);
-            elements.editModal.style.display = 'none';
-            editUploadWidget.value(null);
-            await loadDocuments();
-            alert('Dokumentum sikeresen módosítva!');
-        } catch (error) {
-            console.error('Error updating document:', error);
-            alert('Hiba történt a dokumentum módosítása közben: ' + error.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Mentés';
@@ -550,9 +484,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Load initial documents
+    // Load initial documents if user is logged in
     if (auth.currentUser) {
-        loadDocuments();
+        await loadDocuments();
     }
 
     // Document editing
@@ -611,18 +545,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // File preview functionality for both widgets
-    editUploadWidget.onChange(function(file) {
+    uploadWidget.onChange(function(file) {
         if (file) {
-            const preview = document.querySelector('#editFilePreview');
+            const preview = document.querySelector('#filePreview');
             if (preview) {
                 preview.innerHTML = `
                     <i class="fas fa-file-pdf"></i>
                     <p>${file.name || 'PDF dokumentum'}</p>
                 `;
-                const currentFileEl = preview.querySelector('.current-file');
-                if (currentFileEl) {
-                    currentFileEl.style.display = 'none';
-                }
             }
         }
     });
@@ -640,8 +570,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     elements.editModal?.addEventListener('hidden', () => {
-        editUploadWidget.value(null);
-        const preview = document.querySelector('#editFilePreview');
+        uploadWidget.value(null);
+        const preview = document.querySelector('#filePreview');
         if (preview) {
             preview.innerHTML = `
                 <i class="fas fa-cloud-upload-alt"></i>
@@ -685,7 +615,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.editDocumentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const documentId = elements.editDocumentId.value;
-        const fileInfo = editUploadWidget.value();
+        const fileInfo = uploadWidget.value();
         
         try {
             const docRef = doc(db, 'documents', documentId);
@@ -714,7 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Configure widgets
-    [uploadWidget, editUploadWidget].forEach(widget => {
+    [uploadWidget].forEach(widget => {
         widget.validators.push(function(fileInfo) {
             if (fileInfo.size > 10 * 1024 * 1024) {
                 throw new Error('A fájl mérete nem lehet nagyobb 10MB-nál');
