@@ -25,6 +25,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 1.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
 }
 
 .document-card {
@@ -33,14 +35,16 @@
     gap: 1.5rem;
     padding: 1.5rem;
     background: white;
-    border-radius: 1rem;
     border: 1px solid var(--border);
+    border-radius: 1rem;
     transition: var(--transition);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .document-card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary);
 }
 
 .document-icon {
